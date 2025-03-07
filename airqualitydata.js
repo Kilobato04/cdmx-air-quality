@@ -9,7 +9,7 @@ async function fetchAirQualityData(parameter = 'o3', year = '2025', month = '03'
   try {
     // Construct the URL for our proxy
     // Replace with your own proxy URL if different
-    const proxyUrl = 'http://localhost:3000/proxy';
+    const proxyUrl = '/.netlify/functions/proxy';
     
     // Build the query parameters
     const params = new URLSearchParams({
