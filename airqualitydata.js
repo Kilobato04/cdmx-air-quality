@@ -68,32 +68,59 @@ function parseAirQualityHtml(html, parameter, year, month, specificDay = null) {
     const tables = doc.querySelectorAll('table');
     console.log(`Found ${tables.length} tables in HTML`);
     
-    // Log the first few tables for debugging
-    for (let i = 0; i < Math.min(tables.length, 3); i++) {
-      console.log(`Table ${i} preview:`, tables[i].outerHTML.substring(0, 100));
+    // Log more detailed info about each table
+    for (let i = 0; i < tables.length; i++) {
+      const rows = tables[i].querySelectorAll('tr');
+      const firstRow = rows[0];
+      const thCount = firstRow ? firstRow.querySelectorAll('th').length : 0;
+      const tdCount = firstRow ? firstRow.querySelectorAll('td').length : 0;
+      
+      console.log(`Table ${i}: ${rows.length} rows, first row has ${thCount} th elements and ${tdCount} td elements`);
+      console.log(`Table ${i} preview:`, tables[i].outerHTML.substring(0, 150));
     }
     
-    if (!tables || tables.length === 0) {
+    if (tables.length === 0) {
       console.warn('No tables found in the HTML');
       return [];
     }
     
-    // Try to find the main data table (it usually has many columns with station data)
+    // Let's try to identify the data table differently
+    // It might be the second table or the largest table
     let dataTable = null;
+    let maxCells = 0;
     
     for (let i = 0; i < tables.length; i++) {
-      // Check if this table has a row with station headers
-      const firstRow = tables[i].querySelector('tr');
-      if (firstRow && firstRow.querySelectorAll('th').length > 5) {
-        // This looks like our data table with multiple station columns
+      const rows = tables[i].querySelectorAll('tr');
+      
+      // Skip tables with very few rows
+      if (rows.length < 3) continue;
+      
+      // Check the number of cells in the first data row (second row)
+      const cellsInFirstDataRow = rows.length > 1 ? rows[1].querySelectorAll('td').length : 0;
+      
+      console.log(`Table ${i} has ${cellsInFirstDataRow} cells in the first data row`);
+      
+      // Select table with the most cells in data rows, likely our data table
+      if (cellsInFirstDataRow > maxCells) {
+        maxCells = cellsInFirstDataRow;
         dataTable = tables[i];
-        console.log(`Found data table at index ${i} with ${firstRow.querySelectorAll('th').length} columns`);
-        break;
+        console.log(`New candidate data table: Table ${i} with ${cellsInFirstDataRow} cells`);
       }
     }
     
+    // If we still can't find a good data table, try the second table as fallback (common layout)
+    if (!dataTable && tables.length >= 2) {
+      dataTable = tables[1];
+      console.log('Using second table as fallback data table');
+    }
+    
+    if (!dataTable && tables.length > 0) {
+      dataTable = tables[0];
+      console.log('Using first table as last resort data table');
+    }
+    
     if (!dataTable) {
-      console.warn('Data table not found in the HTML');
+      console.warn('Could not identify any data table in the HTML');
       return [];
     }
     
@@ -104,64 +131,132 @@ function parseAirQualityHtml(html, parameter, year, month, specificDay = null) {
       // If a specific day was requested, use that
       day = specificDay.toString().padStart(2, '0');
     } else {
-      // Try to extract day from the HTML page content
-      const dayMatch = html.match(/Día:?\s*(\d+)/i) || html.match(/Dia:?\s*(\d+)/i);
-      if (dayMatch) {
-        day = parseInt(dayMatch[1]).toString().padStart(2, '0');
+      // Try multiple patterns to extract day
+      const dayPatterns = [
+        /Día:?\s*(\d+)/i,
+        /Dia:?\s*(\d+)/i,
+        /día\s*(\d+)/i,
+        /dia\s*(\d+)/i,
+        /day:?\s*(\d+)/i,
+        /fecha:?\s*\d+\/(\d+)\/\d+/i
+      ];
+      
+      for (const pattern of dayPatterns) {
+        const match = html.match(pattern);
+        if (match) {
+          day = parseInt(match[1]).toString().padStart(2, '0');
+          console.log(`Found day ${day} using pattern ${pattern}`);
+          break;
+        }
       }
     }
     
     console.log(`Processing data for date: ${year}-${month}-${day}`);
     
-    // Extract column headers (stations)
-    const headerCells = dataTable.querySelectorAll('tr:first-child th');
+    // Try different approaches to extract station headers
+    const rows = dataTable.querySelectorAll('tr');
+    if (rows.length === 0) {
+      console.warn('No rows found in data table');
+      return [];
+    }
+    
+    // Find header row - could be first row or another row with th elements
+    let headerRow = null;
+    let headerCells = null;
+    
+    for (let i = 0; i < Math.min(rows.length, 3); i++) {
+      const thElements = rows[i].querySelectorAll('th');
+      if (thElements.length > 2) {
+        headerRow = rows[i];
+        headerCells = thElements;
+        console.log(`Found header row at index ${i} with ${thElements.length} columns`);
+        break;
+      }
+    }
+    
+    // If no header row with th elements found, try first row with td elements
+    if (!headerRow) {
+      headerRow = rows[0];
+      headerCells = headerRow.querySelectorAll('td');
+      console.log(`Using first row as header with ${headerCells.length} td elements`);
+    }
+    
+    // Extract stations from headers
     const stations = [];
     
     // Skip first column (hour column) if present
     for (let i = 1; i < headerCells.length; i++) {
       const stationText = headerCells[i].textContent.trim();
+      // Clean up the text (remove special characters, extra spaces)
+      const cleanStationText = stationText.replace(/[^\w\s]/g, '').trim();
+      
       // Stations are usually 3-letter codes like "ACO", "MER", etc.
-      if (stationText.length > 0) {
-        stations.push(stationText);
+      if (cleanStationText.length > 0) {
+        stations.push(cleanStationText);
       }
     }
     
     console.log(`Found ${stations.length} stations: ${stations.join(', ')}`);
+    
+    if (stations.length === 0 && headerCells.length > 1) {
+      // If we couldn't identify station names, use generic names
+      for (let i = 1; i < headerCells.length; i++) {
+        stations.push(`Station${i}`);
+      }
+      console.log(`Using generic station names: ${stations.join(', ')}`);
+    }
     
     if (stations.length === 0) {
       console.warn('No station headers found in the table');
       return [];
     }
     
-    // Extract rows (hours)
-    const rows = dataTable.querySelectorAll('tr');
-    console.log(`Found ${rows.length} rows in the data table`);
+    // Start from row after header
+    const headerIndex = Array.from(rows).indexOf(headerRow);
+    const startRowIndex = headerIndex + 1;
     
-    // For each row after the header
-    for (let i = 1; i < rows.length; i++) {
+    console.log(`Starting data extraction from row ${startRowIndex}, found ${rows.length - startRowIndex} data rows`);
+    
+    // For each data row
+    for (let i = startRowIndex; i < rows.length; i++) {
       const cells = rows[i].querySelectorAll('td');
       
-      // Skip if no cells
-      if (cells.length === 0) continue;
+      // Skip if no cells or very few cells
+      if (cells.length <= 1) {
+        console.log(`Skipping row ${i} with only ${cells.length} cells`);
+        continue;
+      }
       
       let hour;
       
-      // First cell should be the hour
+      // Try to extract hour from first cell
       const hourText = cells[0].textContent.trim();
+      console.log(`Row ${i} hour cell content: "${hourText}"`);
       
-      // Try to parse hour - it could be a simple number or have text like "Hora: 12"
-      if (/^\d{1,2}$/.test(hourText)) {
-        hour = parseInt(hourText);
-      } else {
-        // Try to extract hours from text format
-        const hourMatch = hourText.match(/(\d{1,2})/);
-        if (hourMatch) {
-          hour = parseInt(hourMatch[1]);
-        } else {
-          // Skip rows that don't have a valid hour
-          console.warn(`Skipping row with invalid hour format: ${hourText}`);
-          continue;
+      // Try multiple patterns to extract hour
+      const hourPatterns = [
+        /^(\d{1,2})$/, // Simple number
+        /(\d{1,2})/, // Number anywhere in text
+        /(\d{1,2}):00/, // Time format
+        /hora:?\s*(\d{1,2})/i, // "Hora: XX" format
+      ];
+      
+      let hourFound = false;
+      for (const pattern of hourPatterns) {
+        const match = hourText.match(pattern);
+        if (match) {
+          hour = parseInt(match[1]);
+          hourFound = true;
+          console.log(`Extracted hour ${hour} using pattern ${pattern}`);
+          break;
         }
+      }
+      
+      // If still no hour found, try to use row index as hour
+      if (!hourFound) {
+        // Assuming rows might correspond to hours 0-23
+        hour = (i - startRowIndex) % 24;
+        console.log(`Using row index to determine hour: ${hour}`);
       }
       
       // Format hour with leading zero if needed
@@ -172,11 +267,12 @@ function parseAirQualityHtml(html, parameter, year, month, specificDay = null) {
         const stationId = stations[j-1];
         const valueText = cells[j].textContent.trim();
         
+        console.log(`Row ${i}, Station ${stationId}, Value: "${valueText}"`);
+        
         // Skip empty or invalid values (often displayed as "-", "N/D", or similar)
-        if (valueText && !['', '-', 'N/D', 'NR', 'NV', '**'].includes(valueText)) {
+        if (valueText && !['', '-', 'N/D', 'NR', 'NV', '**', 'NA', 'n/a'].includes(valueText.toLowerCase())) {
           try {
             // Parse the value (remove any non-numeric characters except decimal point)
-            // If real data doesn't have decimals, we'll extract the integer value
             const cleanText = valueText.replace(/[^\d.]/g, '');
             
             if (cleanText) {
@@ -195,6 +291,8 @@ function parseAirQualityHtml(html, parameter, year, month, specificDay = null) {
                   station: stationId,
                   parameter: parameter
                 });
+                
+                console.log(`Added data point: ${dateString} ${formattedHour}:00, ${stationId}, ${value}`);
               }
             }
           } catch (error) {
