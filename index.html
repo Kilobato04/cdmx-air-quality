@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CDMX Air Quality Data</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1, h2, h3, h4 {
+            color: #2c3e50;
+        }
+        .controls {
+            background-color: #f8f9fa;
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        .form-row {
+            display: flex;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+            gap: 15px;
+            align-items: flex-end;
+        }
+        .form-group {
+            margin-bottom: 10px;
+            flex: 1;
+            min-width: 150px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        select, input, button {
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #ced4da;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            padding: 10px 15px;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #0069d9;
+        }
+        .button-primary {
+            background-color: #28a745;
+        }
+        .button-secondary {
+            background-color: #6c757d;
+        }
+        .status {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        .loading {
+            background-color: #cce5ff;
+            border: 1px solid #b8daff;
+            color: #004085;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 0.9em;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #dee2e6;
+        }
+        th {
+            background-color: #e9ecef;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        .data-section {
+            margin-top: 30px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .data-section-header {
+            background-color: #e9ecef;
+            padding: 10px 15px;
+            border-bottom: 1px solid #dee2e6;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .data-section-content {
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .stats-box {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+        .stat-item {
+            background-color: white;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .stat-title {
+            font-size: 0.8em;
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+        .stat-value {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            border: 1px solid #dee2e6;
+            font-size: 0.9em;
+        }
+        .tab-container {
+            margin-top: 20px;
+        }
+        .tab-buttons {
+            display: flex;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .tab-button {
+            padding: 10px 15px;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+            background-color: transparent;
+            cursor: pointer;
+            margin-right: 5px;
+            font-weight: normal;
+            color: #495057;
+        }
+        .tab-button.active {
+            background-color: white;
+            border-color: #dee2e6;
+            color: #007bff;
+            font-weight: bold;
+        }
+        .tab-content {
+            padding: 20px;
+            border: 1px solid #dee2e6;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+        }
+        .tab-pane {
+            display: none;
+        }
+        .tab-pane.active {
+            display: block;
+        }
+        .proxy-url {
+            margin-top: 10px;
+            font-size: 0.8em;
+            color: #6c757d;
+        }
+        .proxy-url input {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CDMX Air Quality Data Viewer</h1>
+        <p>View real-time air quality data from Mexico City's monitoring network.</p>
+        
+        <div class="controls">
+            <div class="proxy-url">
+                <label for="proxyUrl">CORS Proxy URL:</label>
+                <input type="text" id="proxyUrl" value="http://localhost:3000/proxy" placeholder="Enter your proxy server URL">
+            </div>
+            
+            <h2>Query Parameters</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="parameter">Parameter:</label>
+                    <select id="parameter">
+                        <option value="o3" selected>Ozone (O3)</option>
+                        <option value="pm10">PM10</option>
+                        <option value="pm25">PM2.5</option>
+                        <option value="nox">NOx</option>
+                        <option value="co">CO</option>
+                        <option value="so2">SO2</option>
+                        <option value="pb">Pb</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="year">Year:</label>
+                    <select id="year">
+                        <option value="2025" selected>2025</option>
+                        <option value="2024">2024</option>
+                        <option value="2023">2023</option>
+                        <option value="2022">2022</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="month">Month:</label>
+                    <select id="month">
+                        <option value="01">January</option>
+                        <option value="02">February</option>
+                        <option value="03" selected>March</option>
+                        <option value="04">April</option>
+                        <option value="05">May</option>
+                        <option value="06">June</option>
+                        <option value="07">July</option>
+                        <option value="08">August</option>
+                        <option value="09">September</option>
+                        <option value="10">October</option>
+                        <option value="11">November</option>
+                        <option value="12">December</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="day">Day (optional):</label>
+                    <select id="day">
+                        <option value="">All Days</option>
+                        <option value="01">1</option>
+                        <option value="02">2</option>
+                        <option value="03">3</option>
+                        <option value="04">4</option>
+                        <option value="05">5</option>
+                        <option value="06">6</option>
+                        <option value="07">7</option>
+                        <option value="08">8</option>
+                        <option value="09">9</option>
+                        <option value="10">10</option>
+                        <option value="11">11</option>
+                        <option value="12">12</option>
+                        <option value="13">13</option>
+                        <option value="14">14</option>
+                        <option value="15">15</option>
+                        <option value="16">16</option>
+                        <option value="17">17</option>
+                        <option value="18">18</option>
+                        <option value="19">19</option>
+                        <option value="20">20</option>
+                        <option value="21">21</option>
+                        <option value="22">22</option>
+                        <option value="23">23</option>
+                        <option value="24">24</option>
+                        <option value="25">25</option>
+                        <option value="26">26</option>
+                        <option value="27">27</option>
+                        <option value="28">28</option>
+                        <option value="29">29</option>
+                        <option value="30">30</option>
+                        <option value="31">31</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="hour">Hour (optional):</label>
+                    <select id="hour">
+                        <option value="">All Hours</option>
+                        <option value="00">00:00</option>
+                        <option value="01">01:00</option>
+                        <option value="02">02:00</option>
+                        <option value="03">03:00</option>
+                        <option value="04">04:00</option>
+                        <option value="05">05:00</option>
+                        <option value="06">06:00</option>
+                        <option value="07">07:00</option>
+                        <option value="08">08:00</option>
+                        <option value="09">09:00</option>
+                        <option value="10">10:00</option>
+                        <option value="11">11:00</option>
+                        <option value="12">12:00</option>
+                        <option value="13">13:00</option>
+                        <option value="14">14:00</option>
+                        <option value="15">15:00</option>
+                        <option value="16">16:00</option>
+                        <option value="17">17:00</option>
+                        <option value="18">18:00</option>
+                        <option value="19">19:00</option>
+                        <option value="20">20:00</option>
+                        <option value="21">21:00</option>
+                        <option value="22">22:00</option>
+                        <option value="23">23:00</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="station">Station (optional):</label>
+                    <select id="station">
+                        <option value="">All Stations</option>
+                        <option value="ACO">Acolman (ACO)</option>
+                        <option value="AJM">Ajusco Medio (AJM)</option>
+                        <option value="ATI">Atizapán (ATI)</option>
+                        <option value="BJU">Benito Juárez (BJU)</option>
+                        <option value="CAM">Camarones (CAM)</option>
+                        <option value="CCA">Centro de Ciencias (CCA)</option>
+                        <option value="CHO">Chalco (CHO)</option>
+                        <option value="CUA">Cuajimalpa (CUA)</option>
+                        <option value="CUT">Cuautitlán (CUT)</option>
+                        <option value="FAC">FES Acatlán (FAC)</option>
+                        <option value="IZT">Iztapalapa (IZT)</option>
+                        <option value="MER">Merced (MER)</option>
+                        <option value="MGH">Miguel Hidalgo (MGH)</option>
+                        <option value="PED">Pedregal (PED)</option>
+                        <option value="TLA">Tlalnepantla (TLA)</option>
+                        <option value="UIZ">UAM Iztapalapa (UIZ)</option>
+                        <option value="XAL">Xalostoc (XAL)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <button id="fetchDataBtn" class="button-primary">Fetch Data</button>
+                </div>
+                <div class="form-group">
+                    <button id="clearResultsBtn" class="button-secondary">Clear Results</button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="status" class="status"></div>
+        
+        <div id="resultsContainer" style="display: none;">
+            <div class="stats-box">
+                <h3>Query Summary</h3>
+                <div id="querySummary"></div>
+                
+                <h3>Data Statistics</h3>
+                <div class="stats-grid" id="statsGrid">
+                    <!-- Stats items will be populated here -->
+                </div>
+            </div>
+            
+            <div class="tab-container">
+                <div class="tab-buttons">
+                    <button class="tab-button active" data-tab="tabRawData">Raw Data</button>
+                    <button class="tab-button" data-tab="tabAverages">Hourly Averages</button>
+                    <button class="tab-button" data-tab="tabStations">Station Data</button>
+                    <button class="tab-button" data-tab="tabChart">Chart</button>
+                </div>
+                
+                <div class="tab-content">
+                    <div class="tab-pane active" id="tabRawData">
+                        <div id="rawDataTable"></div>
+                    </div>
+                    
+                    <div class="tab-pane" id="tabAverages">
+                        <div id="averagesTable"></div>
+                    </div>
+                    
+                    <div class="tab-pane" id="tabStations">
+                        <div id="stationsData"></div>
+                    </div>
+                    
+                    <div class="tab-pane" id="tabChart">
+                        <div id="chartContainer" style="width: 100%; height: 400px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Import the data retrieval script -->
+    <script src="airqualitydata.js"></script>
+    
+    <!-- Import chart.js for visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tab switching logic
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    // Remove active class from all tabs
+                    document.querySelectorAll('.tab-button').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    document.querySelectorAll('.tab-pane').forEach(pane => {
+                        pane.classList.remove('active');
+                    });
+                    
+                    // Add active class to clicked tab
+                    this.classList.add('active');
+                    const tabId = this.getAttribute('data-tab');
+                    document.getElementById(tabId).classList.add('active');
+                });
+            });
+            
+            // Clear results button
+            document.getElementById('clearResultsBtn').addEventListener('click', function() {
+                document.getElementById('resultsContainer').style.display = 'none';
+                document.getElementById('status').style.display = 'none';
+                document.getElementById('rawDataTable').innerHTML = '';
+                document.getElementById('averagesTable').innerHTML = '';
+                document.getElementById('stationsData').innerHTML = '';
+                document.getElementById('querySummary').innerHTML = '';
+                document.getElementById('statsGrid').innerHTML = '';
+                
+                // Clear any charts
+                if (window.airQualityChart) {
+                    window.airQualityChart.destroy();
+                    window.airQualityChart = null;
+                }
+            });
+            
+            // Fetch data button
+            document.getElementById('fetchDataBtn').addEventListener('click', fetchAirQualityData);
+            
+            // Function to show status message
+            function showStatus(type, message) {
+                const statusElement = document.getElementById('status');
+                statusElement.textContent = message;
+                statusElement.className = 'status ' + type;
+                statusElement.style.display = 'block';
+            }
+            
+            // Function to fetch air quality data
+            async function fetchAirQualityData() {
+                // Get form values
+                const proxyUrl = document.getElementById('proxyUrl').value;
+                const parameter = document.getElementById('parameter').value;
+                const year = document.getElementById('year').value;
+                const month = document.getElementById('month').value;
+                const day = document.getElementById('day').value;
+                const hour = document.getElementById('hour').value;
+                const station = document.getElementById('station').value;
+                
+                // Show loading status
+                showStatus('loading', 'Fetching data from CDMX air quality monitoring network...');
+                
+                try {
+                    // Override the proxy URL if specified
+                    window.airQualityData.proxyUrl = proxyUrl;
+                    
+                    // Fetch the data using our data retrieval module
+                    const data = await window.airQualityData.fetch(parameter, year, month, day || null, hour || null, station || null);
+                    
+                    // Process the data
+                    const processed = window.airQualityData.process(data);
+                    
+                    // Show success status
+                    showStatus('success', `Successfully retrieved ${data.length} data points`);
+                    
+                    // Display the results
+                    displayResults(data, processed, parameter);
+                    
+                    // Show results container
+                    document.getElementById('resultsContainer').style.display = 'block';
+                } catch (error) {
+                    console.error('Error fetching data:', error);
+                    showStatus('error', `Error: ${error.message}`);
+                }
+            }
+            
+            // Function to display results
+            function displayResults(data, processed, parameter) {
+                // Update query summary
+                displayQuerySummary(data, parameter);
+                
+                // Display statistics
+                displayStatistics(data, processed);
+                
+                // Display raw data table
+                displayRawData(data, parameter);
+                
+                // Display hourly averages
+                displayHourlyAverages(processed.hourlyAverages, parameter);
+                
+                // Display station data
+                displayStationData(processed.stations, parameter);
+                
+                // Display chart
+                displayChart(processed, parameter);
+            }
+            
+            // Function to display query summary
+            function displayQuerySummary(data, parameter) {
+                const querySummary = document.getElementById('querySummary');
+                
+                // Get form values
+                const year = document.getElementById('year').value;
+                const month = document.getElementById('month').value;
+                const day = document.getElementById('day').value;
+                const hour = document.getElementById('hour').value;
+                const station = document.getElementById('station').value;
+                
+                // Build summary
+                let summary = `<p><strong>Parameter:</strong> ${parameter.toUpperCase()}</p>`;
+                summary += `<p><strong>Date:</strong> ${year}-${month}${day ? '-'+day : ''}</p>`;
+                
+                if (hour) {
+                    summary += `<p><strong>Hour:</strong> ${hour}:00</p>`;
+                }
+                
+                if (station) {
+                    summary += `<p><strong>Station:</strong> ${station}</p>`;
+                }
+                
+                // Get the actual date from the data if available
+                if (data.length > 0) {
+                    const dates = [...new Set(data.map(item => item.date))];
+                    if (dates.length === 1) {
+                        summary += `<p><strong>Retrieved date:</strong> ${dates[0]}</p>`;
+                    } else if (dates.length > 1) {
+                        summary += `<p><strong>Date range:</strong> ${dates[0]} to ${dates[dates.length-1]}</p>`;
+                    }
+                }
+                
+                querySummary.innerHTML = summary;
+            }
+            
+            // Function to display statistics
+            function displayStatistics(data, processed) {
+                const statsGrid = document.getElementById('statsGrid');
+                statsGrid.innerHTML = '';
+                
+                if (data.length === 0) {
+                    statsGrid.innerHTML = '<p>No data available to display statistics</p>';
+                    return;
+                }
+                
+                // Get unique stations
+                const stations = Object.keys(processed.stations);
+                
+                // Get unique dates
+                const dates = [...new Set(data.map(item => item.date))];
+                
+                // Get unique hours
+                const hours = [...new Set(data.map(item => item.hour))];
+                
+                // Calculate min, max, and average values
+                const values = data.map(item => item.value);
+                const min = Math.min(...values);
+                const max = Math.max(...values);
+                const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
+                
+                // Create stat items
+                addStatItem(statsGrid, 'Total Records', data.length);
+                addStatItem(statsGrid, 'Stations', `${stations.length} stations`);
+                addStatItem(statsGrid, 'Dates', `${dates.length} day(s)`);
+                addStatItem(statsGrid, 'Hours', `${hours.length} hour(s)`);
+                addStatItem(statsGrid, 'Min Value', min.toFixed(1));
+                addStatItem(statsGrid, 'Max Value', max.toFixed(1));
+                addStatItem(statsGrid, 'Average Value', avg.toFixed(1));
+            }
+            
+            // Function to add a stat item
+            function addStatItem(container, title, value) {
+                const item = document.createElement('div');
+                item.className = 'stat-item';
+                
+                const titleEl = document.createElement('div');
+                titleEl.className = 'stat-title';
+                titleEl.textContent = title;
+                
+                const valueEl = document.createElement('div');
+                valueEl.className = 'stat-value';
+                valueEl.textContent = value;
+                
+                item.appendChild(titleEl);
+                item.appendChild(valueEl);
+                container.appendChild(item);
+            }
+            
+            // Function to display raw data table
+            function displayRawData(data, parameter, limit = 100) {
+                const container = document.getElementById('rawDataTable');
+                
+                if (!data || data.length === 0) {
+                    container.innerHTML = '<p>No data available</p>';
+                    return;
+                }
+                
+                // Limit the number of items to display
+                const displayData = data.slice(0, limit);
+                
+                // Create table
+                let html = `
+                    <h3>Raw Data (showing ${displayData.length} of ${data.length} records)</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Hour</th>
+                                <th>Value (${getParameterUnit(parameter)})</th>
+                                <th>Station</th>
+                                <th>Quality</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                // Add rows
+                displayData.forEach(item => {
+                    const quality = window.airQualityData.getCategory(parameter, item.value);
+                    
+                    html += `
+                        <tr>
+                            <td>${item.date}</td>
+                            <td>${item.hour}:00</td>
+                            <td>${item.value}</td>
+                            <td>${item.station}</td>
+                            <td style="background-color: ${quality.color}; color: ${getContrastColor(quality.color)}">
+                                ${quality.category}
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                        </tbody>
+                    </table>
+                `;
+                
+                // If there's more data than shown, indicate that
+                if (data.length > limit) {
+                    html += `<p>Showing ${limit} of ${data.length} records</p>`;
+                }
+                
+                container.innerHTML = html;
+            }
+            
+            // Function to display hourly averages
+            function displayHourlyAverages(averages, parameter) {
+                const container = document.getElementById('averagesTable');
+                
+                if (!averages || averages.length === 0) {
+                    container.innerHTML = '<p>No hourly averages available</p>';
+                    return;
+                }
+                
+                // Create table
+                let html = `
+                    <h3>Hourly Averages (${averages.length} records)</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Hour</th>
+                                <th>Average Value (${getParameterUnit(parameter)})</th>
+                                <th>Stations Reporting</th>
+                                <th>Quality</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                // Add rows
+                averages.forEach(item => {
+                    const quality = window.airQualityData.getCategory(parameter, item.value);
+                    
+                    html += `
+                        <tr>
+                            <td>${item.date}</td>
+                            <td>${item.hour}:00</td>
+                            <td>${item.value}</td>
+                            <td>${item.stationCount}</td>
+                            <td style="background-color: ${quality.color}; color: ${getContrastColor(quality.color)}">
+                                ${quality.category}
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                        </tbody>
+                    </table>
+                `;
+                
+                container.innerHTML = html;
+            }
+            
+            // Function to display station data
+            function displayStationData(stations, parameter) {
+                const container = document.getElementById('stationsData');
+                
+                if (!stations || Object.keys(stations).length === 0) {
+                    container.innerHTML = '<p>No station data available</p>';
+                    return;
+                }
+                
+                let html = `<h3>Data by Station (${Object.keys(stations).length} stations)</h3>`;
+                
+                // Add an accordion for each station
+                Object.keys(stations).sort().forEach((stationId, index) => {
+                    const stationData = stations[stationId];
+                    
+                    html += `
+                        <div class="data-section">
+                            <div class="data-section-header">
+                                <span>Station: ${stationId}</span>
+                                <span>${stationData.length} records</span>
+                            </div>
+                            <div class="data-section-content">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Hour</th>
+                                            <th>Value (${getParameterUnit(parameter)})</th>
+                                            <th>Quality</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                    `;
+                    
+                    // Sort by date and hour
+                    stationData.sort((a, b) => {
+                        if (a.date !== b.date) return a.date.localeCompare(b.date);
+                        return parseInt(a.hour) - parseInt(b.hour);
+                    });
+                    
+                    // Add rows
+                    stationData.forEach(item => {
+                        const quality = window.airQualityData.getCategory(parameter, item.value);
+                        
+                        html += `
+                            <tr>
+                                <td>${item.date}</td>
+                                <td>${item.hour}:00</td>
+                                <td>${item.value}</td>
+                                <td style="background-color: ${quality.color}; color: ${getContrastColor(quality.color)}">
+                                    ${quality.category}
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                container.innerHTML = html;
+            }
+            
+            // Function to display chart
+            function displayChart(processed, parameter) {
+                // Get the canvas element
+                const chartContainer = document.getElementById('chartContainer');
+                chartContainer.innerHTML = '<canvas id="airQualityChart"></canvas>';
+                
+                const ctx = document.getElementById('airQualityChart').getContext('2d');
+                
+                // Destroy previous chart if it exists
+                if (window.airQualityChart) {
+                    window.airQualityChart.destroy();
+                }
+                
+                // Prepare data for the chart
+                let chartData;
+                
+                // Check if we have hourly averages or need to show by station
+                if (processed.hourlyAverages && processed.hourlyAverages.length > 0) {
+                    // Use hourly averages (single line chart)
+                    const labels = processed.hourlyAverages.map(item => `${item.date} ${item.hour}:00`);
+                    const values = processed.hourlyAverages.map(item => item.value);
+                    
+                    chartData = {
+                        labels: labels,
+                        datasets: [{
+                            label: `${parameter.toUpperCase()} - Hourly Average`,
+                            data: values,
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }]
+                    };
+                } else if (Object.keys(processed.stations).length > 0) {
+                    // Show data by station (multiple lines)
+                    const datasets = [];
+                    
+                    // Create a dataset for each station
+                    Object.keys(processed.stations).forEach(stationId => {
+                        const stationData = processed.stations[stationId];
+                        
+                        // Skip if no data
+                        if (stationData.length === 0) return;
+                        
+                        // Sort by date and hour
+                        stationData.sort((a, b) => {
+                            if (a.date !== b.date) return a.date.localeCompare(b.date);
+                            return parseInt(a.hour) - parseInt(b.hour);
+                        });
+                        
+                        // Create a random color for this station
+                        const colorHue = Math.floor(Math.random() * 360);
+                        
+                        datasets.push({
+                            label: stationId,
+                            data: stationData.map(item => ({
+                                x: `${item.date} ${item.hour}:00`,
+                                y: item.value
+                            })),
+                            backgroundColor: `hsla(${colorHue}, 70%, 60%, 0.2)`,
+                            borderColor: `hsla(${colorHue}, 70%, 40%, 1)`,
+                            borderWidth: 1
+                        });
+                    });
+                    
+                    chartData = {
+                        datasets: datasets
+                    };
+                } else {
+                    // No data to chart
+                    chartContainer.innerHTML = '<p>No data available to chart</p>';
+                    return;
+                }
+                
+                // Create the chart
+                window.airQualityChart = new Chart(ctx, {
+                    type: 'line',
+                    data: chartData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Date & Time'
+                                },
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: `${parameter.toUpperCase()} (${getParameterUnit(parameter)})`
+                                }
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: `${parameter.toUpperCase()} Air Quality Data`
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Helper function to get parameter unit
+            function getParameterUnit(parameter) {
+                const units = {
+                    'o3': 'ppb',
+                    'pm10': 'μg/m³',
+                    'pm25': 'μg/m³',
+                    'nox': 'ppb',
+                    'co': 'ppm',
+                    'so2': 'ppb',
+                    'pb': 'μg/m³'
+                };
+                
+                return units[parameter] || '';
+            }
+            
+            // Helper function to get contrast color for text (black or white)
+            function getContrastColor(hexColor) {
+                // Convert hex to RGB
+                let r, g, b;
+                
+                if (hexColor.startsWith('#')) {
+                    r = parseInt(hexColor.slice(1, 3), 16);
+                    g = parseInt(hexColor.slice(3, 5), 16);
+                    b = parseInt(hexColor.slice(5, 7), 16);
+                } else if (hexColor.startsWith('rgb')) {
+                    const rgbValues = hexColor.match(/\d+/g);
+                    r = parseInt(rgbValues[0]);
+                    g = parseInt(rgbValues[1]);
+                    b = parseInt(rgbValues[2]);
+                } else {
+                    return '#000000'; // Default to black for unknown formats
+                }
+                
+                // Calculate luminance (perceived brightness)
+                // Formula: 0.299r + 0.587g + 0.114b
+                const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                
+                // Use white for dark colors, black for light colors
+                return luminance > 0.5 ? '#000000' : '#ffffff';
+            }
+        });
+    </script>
+</body>
+</html>
