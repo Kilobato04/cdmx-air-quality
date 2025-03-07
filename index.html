@@ -1008,16 +1008,25 @@ function displayQuerySummary(data, parameter, day, hour, station) {
                 });
             }
             
+
             // Helper function to get parameter unit
             function getParameterUnit(parameter) {
                 const units = {
                     'o3': 'ppb',
+                    'o3_8h': 'ppb',
                     'pm10': 'μg/m³',
+                    'pm10nowCast': 'μg/m³',
                     'pm25': 'μg/m³',
+                    'pm25nowCast': 'μg/m³',
                     'nox': 'ppb',
+                    'no2': 'ppb',
+                    'no': 'ppb',
                     'co': 'ppm',
                     'so2': 'ppb',
-                    'pb': 'μg/m³'
+                    'wsp': 'm/s',
+                    'wdr': '°',
+                    'tmp': '°C',
+                    'rh': '%'
                 };
                 
                 return units[parameter] || '';
