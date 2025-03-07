@@ -221,11 +221,10 @@
         <h1>CDMX Air Quality Data Viewer</h1>
         <p>View real-time air quality data from Mexico City's monitoring network.</p>
         
-        <div class="controls">
-            <div class="proxy-url">
-                <label for="proxyUrl">CORS Proxy URL:</label>
-                <input type="text" id="proxyUrl" value="http://localhost:3000/proxy" placeholder="Enter your proxy server URL">
-            </div>
+        <div class="proxy-url">
+            <label for="proxyUrl">CORS Proxy URL:</label>
+            <input type="text" id="proxyUrl" value="/.netlify/functions/proxy" placeholder="Enter your proxy server URL">
+        </div>
             
             <h2>Query Parameters</h2>
             <div class="form-row">
