@@ -48,18 +48,14 @@ async function fetchAirQualityData(parameter = 'o3', year = '2025', month = '03'
 }
 
 // Function to parse HTML response from aire.cdmx.gob.mx
-function parseAirQualityHtml(html, parameter, year, month, specificDay = null) {
+function parseAirQualityHtml(html, parameter, year, month, specificDay = null, specificHour = null, specificStation = null) {
   const data = [];
-  // Used to track already processed data points to avoid duplicates
-  const processedEntries = new Set();
   
   // Check if HTML is empty or too short
   if (!html || html.length < 100) {
     console.error('HTML response is empty or too short');
     return [];
   }
-  
-  console.log('HTML preview:', html.substring(0, 300));
   
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
@@ -91,7 +87,6 @@ function parseAirQualityHtml(html, parameter, year, month, specificDay = null) {
     // Get all rows
     const rows = dataTable.querySelectorAll('tr');
     
-    // Handle case with table structure as described: Fecha, Hora, then station names
     // Look at second row (index 1) for headers
     if (rows.length < 2) {
       console.warn('Table has fewer than 2 rows');
@@ -109,9 +104,8 @@ function parseAirQualityHtml(html, parameter, year, month, specificDay = null) {
       return [];
     }
     
-    // Extract header texts and remove duplicates
+    // Extract header texts 
     const headerTexts = Array.from(headerCells).map(cell => cell.textContent.trim());
-    console.log(`Headers: ${headerTexts.slice(0, 5).join(', ')}...`);
     
     // Find indices for Fecha and Hora
     const fechaIndex = headerTexts.findIndex(text => 
@@ -129,36 +123,72 @@ function parseAirQualityHtml(html, parameter, year, month, specificDay = null) {
     
     // Get station names - all columns after hora
     const stationStartIndex = horaIndex + 1;
-    const stations = headerTexts.slice(stationStartIndex);
+    let stationIndices = new Map();
     
-    // Create a map of station names to column indices (handles duplicates)
-    const stationMap = new Map();
-    for (let i = 0; i < stations.length; i++) {
-      const station = stations[i];
-      // Only add the first occurrence of each station name to ensure we don't get duplicates
-      if (!stationMap.has(station)) {
-        stationMap.set(station, stationStartIndex + i);
+    // Add each station name and its column index to the map
+    for (let i = stationStartIndex; i < headerTexts.length; i++) {
+      const stationName = headerTexts[i].trim();
+      if (stationName && stationName.length > 0) {
+        // Skip if we're only interested in a specific station and this isn't it
+        if (specificStation && stationName !== specificStation) {
+          continue;
+        }
+        stationIndices.set(stationName, i);
       }
     }
     
-    console.log(`Found ${stationMap.size} unique stations`);
+    console.log(`Found ${stationIndices.size} stations to process`);
     
     // Use the specified day or extract it
-    let day = specificDay ? specificDay.toString().padStart(2, '0') : '01';
+    let day = specificDay ? specificDay.toString().padStart(2, '0') : null;
+    
+    // Get current date and time for filtering future hours
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = (now.getMonth() + 1).toString().padStart(2, '0');
+    const currentDay = now.getDate().toString().padStart(2, '0');
+    const currentHour = now.getHours();
     
     // Process data rows (starting from row after headers)
     for (let rowIndex = 2; rowIndex < rows.length; rowIndex++) {
       const cells = rows[rowIndex].querySelectorAll('td');
       
       // Skip rows with too few cells
-      if (cells.length <= stationStartIndex) continue;
+      if (cells.length <= stationStartIndex) {
+        continue;
+      }
+      
+      // Get date if fecha column exists
+      let rowDay = day;
+      if (fechaIndex !== -1 && fechaIndex < cells.length) {
+        const fechaText = cells[fechaIndex].textContent.trim();
+        const dateMatch = fechaText.match(/(\d+)[\/\-](\d+)[\/\-](\d+)/);
+        
+        if (dateMatch) {
+          // Extract day based on format
+          if (parseInt(dateMatch[3]) > 31) { // DD/MM/YYYY
+            rowDay = dateMatch[1].padStart(2, '0');
+          } else if (parseInt(dateMatch[1]) > 31) { // YYYY/MM/DD
+            rowDay = dateMatch[3].padStart(2, '0');
+          } else { // MM/DD/YYYY
+            rowDay = dateMatch[2].padStart(2, '0');
+          }
+        }
+      }
+      
+      if (!rowDay && specificDay) {
+        rowDay = specificDay.padStart(2, '0');
+      } else if (!rowDay) {
+        // If we still don't have a day, skip this row
+        continue;
+      }
       
       // Get hour value
+      let hourText = '';
       let hour = null;
       
-      // Extract hour from the hora column
       if (horaIndex < cells.length) {
-        const hourText = cells[horaIndex].textContent.trim();
+        hourText = cells[horaIndex].textContent.trim();
         const hourMatch = hourText.match(/(\d+)/);
         
         if (hourMatch) {
@@ -168,91 +198,66 @@ function parseAirQualityHtml(html, parameter, year, month, specificDay = null) {
       
       // Skip if hour is invalid
       if (hour === null || isNaN(hour) || hour < 0 || hour > 23) {
-        console.log(`Skipping row ${rowIndex} with invalid hour`);
+        continue;
+      }
+      
+      // Skip if we only want a specific hour and this isn't it
+      if (specificHour !== null && parseInt(specificHour) !== hour) {
+        continue;
+      }
+      
+      // Skip future hours (if the date is current or future)
+      const isCurrentDay = parseInt(year) === currentYear && 
+                          month === currentMonth && 
+                          rowDay === currentDay;
+      
+      const isFutureDay = parseInt(year) > currentYear || 
+                         (parseInt(year) === currentYear && parseInt(month) > parseInt(currentMonth)) ||
+                         (parseInt(year) === currentYear && month === currentMonth && parseInt(rowDay) > parseInt(currentDay));
+      
+      if (isFutureDay || (isCurrentDay && hour > currentHour)) {
+        console.log(`Skipping future time: ${year}-${month}-${rowDay} ${hour}:00`);
         continue;
       }
       
       // Format hour with leading zero
       const formattedHour = hour.toString().padStart(2, '0');
       
-      // Try to extract date if fecha column exists and specificDay is not provided
-      if (!specificDay && fechaIndex !== -1 && fechaIndex < cells.length) {
-        const fechaText = cells[fechaIndex].textContent.trim();
-        const dateMatch = fechaText.match(/(\d+)[\/\-](\d+)[\/\-](\d+)/);
-        
-        if (dateMatch) {
-          // Different date formats: DD/MM/YYYY or YYYY/MM/DD or MM/DD/YYYY
-          // Determine format based on ranges
-          let extractedDay, extractedMonth, extractedYear;
-          
-          if (parseInt(dateMatch[3]) > 31) {
-            // Format is DD/MM/YYYY
-            extractedDay = dateMatch[1];
-            extractedMonth = dateMatch[2];
-            extractedYear = dateMatch[3];
-          } else if (parseInt(dateMatch[1]) > 31) {
-            // Format is YYYY/MM/DD
-            extractedYear = dateMatch[1];
-            extractedMonth = dateMatch[2];
-            extractedDay = dateMatch[3];
-          } else {
-            // Guess MM/DD/YYYY (commonly used in Mexico)
-            extractedMonth = dateMatch[1];
-            extractedDay = dateMatch[2];
-            extractedYear = dateMatch[3];
-          }
-          
-          // Update day from extracted date
-          day = parseInt(extractedDay).toString().padStart(2, '0');
-          console.log(`Extracted day ${day} from date cell: ${fechaText}`);
+      // Process each station we're interested in
+      for (const [stationName, colIndex] of stationIndices.entries()) {
+        if (colIndex >= cells.length) {
+          continue;
         }
-      }
-      
-      // Process each unique station
-      for (const [stationId, cellIndex] of stationMap.entries()) {
-        if (cellIndex >= cells.length) continue;
         
-        const valueCell = cells[cellIndex];
+        const valueCell = cells[colIndex];
         const valueText = valueCell.textContent.trim();
         
         // Skip empty or special values
-        if (valueText && !['', '-', 'N/D', 'NR', 'NV', '**', 'NA', 'n/a'].includes(valueText.toLowerCase())) {
-          // Parse the value
-          const cleanValue = valueText.replace(/[^\d.]/g, '');
+        if (valueText && !['', '-', 'n/d', 'nr', 'nv', '**', 'na', 'n/a'].includes(valueText.toLowerCase())) {
+          // Clean and parse the value
+          const cleanText = valueText.replace(/[^\d.]/g, '');
           
-          if (cleanValue && cleanValue.length > 0) {
-            const value = parseFloat(cleanValue);
+          if (cleanText) {
+            const value = parseFloat(cleanText);
             
             if (!isNaN(value)) {
-              // Create a unique key for this data point
-              const dateString = `${year}-${month}-${day}`;
-              const entryKey = `${dateString}-${formattedHour}-${stationId}`;
+              // Add the data point
+              data.push({
+                date: `${year}-${month}-${rowDay}`,
+                hour: formattedHour,
+                value: value,
+                station: stationName,
+                parameter: parameter
+              });
               
-              // Only add this data point if we haven't already processed it
-              if (!processedEntries.has(entryKey)) {
-                // Add to processed set
-                processedEntries.add(entryKey);
-                
-                // Add the data point
-                data.push({
-                  date: dateString,
-                  hour: formattedHour,
-                  value: value,
-                  station: stationId,
-                  parameter: parameter
-                });
-                
-                console.log(`Added data: ${dateString} ${formattedHour}:00, Station: ${stationId}, Value: ${value}`);
-              } else {
-                console.log(`Skipping duplicate: ${dateString} ${formattedHour}:00, Station: ${stationId}`);
-              }
+              console.log(`Added: ${year}-${month}-${rowDay} ${formattedHour}:00, Station: ${stationName}, Value: ${value}`);
             }
           }
         }
       }
     }
     
-    console.log(`Successfully extracted ${data.length} unique data points`);
+    console.log(`Successfully extracted ${data.length} data points`);
     
   } catch (error) {
     console.error('Error parsing HTML:', error);
