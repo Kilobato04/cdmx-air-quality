@@ -50,12 +50,28 @@ async function fetchAirQualityData(parameter = 'o3', year = '2025', month = '03'
 // Function to parse HTML response from aire.cdmx.gob.mx
 function parseAirQualityHtml(html, parameter, year, month, specificDay = null) {
   const data = [];
+  
+  // Check if HTML is empty or too short
+  if (!html || html.length < 100) {
+    console.error('HTML response is empty or too short');
+    return [];
+  }
+  
+  // Log a preview of the HTML for debugging
+  console.log('HTML preview:', html.substring(0, 300));
+  
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
   
   try {
     // Extract tables from the document
     const tables = doc.querySelectorAll('table');
+    console.log(`Found ${tables.length} tables in HTML`);
+    
+    // Log the first few tables for debugging
+    for (let i = 0; i < Math.min(tables.length, 3); i++) {
+      console.log(`Table ${i} preview:`, tables[i].outerHTML.substring(0, 100));
+    }
     
     if (!tables || tables.length === 0) {
       console.warn('No tables found in the HTML');
@@ -71,6 +87,7 @@ function parseAirQualityHtml(html, parameter, year, month, specificDay = null) {
       if (firstRow && firstRow.querySelectorAll('th').length > 5) {
         // This looks like our data table with multiple station columns
         dataTable = tables[i];
+        console.log(`Found data table at index ${i} with ${firstRow.querySelectorAll('th').length} columns`);
         break;
       }
     }
@@ -109,15 +126,16 @@ function parseAirQualityHtml(html, parameter, year, month, specificDay = null) {
       }
     }
     
+    console.log(`Found ${stations.length} stations: ${stations.join(', ')}`);
+    
     if (stations.length === 0) {
       console.warn('No station headers found in the table');
       return [];
     }
     
-    console.log(`Found ${stations.length} stations: ${stations.join(', ')}`);
-    
     // Extract rows (hours)
     const rows = dataTable.querySelectorAll('tr');
+    console.log(`Found ${rows.length} rows in the data table`);
     
     // For each row after the header
     for (let i = 1; i < rows.length; i++) {
@@ -189,7 +207,7 @@ function parseAirQualityHtml(html, parameter, year, month, specificDay = null) {
     console.log(`Successfully extracted ${data.length} data points from HTML`);
   } catch (error) {
     console.error('Error parsing HTML:', error);
-    throw error;
+    return [];
   }
   
   return data;
