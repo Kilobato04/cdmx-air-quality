@@ -1,0 +1,8 @@
+{
+  "name": "cdmx-air-quality",
+  "version": "1.0.0",
+  "description": "Mexico City Air Quality Data Retriever",
+  "dependencies": {
+    "axios": "^1.6.2"
+  }
+}
