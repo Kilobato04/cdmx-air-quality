@@ -556,22 +556,30 @@ function displayResults(data, processed, parameter) {
     // Display raw data table
     displayRawData(filteredData, parameter);
     
+    // Check if the containers exist before accessing their style
+    const averagesContainer = document.getElementById('averagesContainer');
+    const stationsContainer = document.getElementById('stationsContainer');
+    
     // Display hourly averages
-    if (!hour) {
-        // Only show hourly averages if not filtered to a specific hour
-        displayHourlyAverages(filteredProcessed.hourlyAverages, parameter);
-        document.getElementById('averagesContainer').style.display = 'block';
-    } else {
-        document.getElementById('averagesContainer').style.display = 'none';
+    if (averagesContainer) {
+        if (!hour) {
+            // Only show hourly averages if not filtered to a specific hour
+            displayHourlyAverages(filteredProcessed.hourlyAverages, parameter);
+            averagesContainer.style.display = 'block';
+        } else {
+            averagesContainer.style.display = 'none';
+        }
     }
     
     // Display station data
-    if (!station) {
-        // Only show station breakdown if not filtered to a specific station
-        displayStationData(filteredProcessed.stations, parameter);
-        document.getElementById('stationsContainer').style.display = 'block';
-    } else {
-        document.getElementById('stationsContainer').style.display = 'none';
+    if (stationsContainer) {
+        if (!station) {
+            // Only show station breakdown if not filtered to a specific station
+            displayStationData(filteredProcessed.stations, parameter);
+            stationsContainer.style.display = 'block';
+        } else {
+            stationsContainer.style.display = 'none';
+        }
     }
     
     // Display chart
