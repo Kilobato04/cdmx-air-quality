@@ -50,6 +50,8 @@ async function fetchAirQualityData(parameter = 'o3', year = '2025', month = '03'
 // Function to parse HTML response from aire.cdmx.gob.mx
 function parseAirQualityHtml(html, parameter, year, month, specificDay = null) {
   const data = [];
+  // Used to track already processed data points to avoid duplicates
+  const processedEntries = new Set();
   
   // Check if HTML is empty or too short
   if (!html || html.length < 100) {
@@ -107,7 +109,7 @@ function parseAirQualityHtml(html, parameter, year, month, specificDay = null) {
       return [];
     }
     
-    // Extract header texts
+    // Extract header texts and remove duplicates
     const headerTexts = Array.from(headerCells).map(cell => cell.textContent.trim());
     console.log(`Headers: ${headerTexts.slice(0, 5).join(', ')}...`);
     
@@ -129,7 +131,17 @@ function parseAirQualityHtml(html, parameter, year, month, specificDay = null) {
     const stationStartIndex = horaIndex + 1;
     const stations = headerTexts.slice(stationStartIndex);
     
-    console.log(`Found ${stations.length} stations: ${stations.slice(0, 5).join(', ')}...`);
+    // Create a map of station names to column indices (handles duplicates)
+    const stationMap = new Map();
+    for (let i = 0; i < stations.length; i++) {
+      const station = stations[i];
+      // Only add the first occurrence of each station name to ensure we don't get duplicates
+      if (!stationMap.has(station)) {
+        stationMap.set(station, stationStartIndex + i);
+      }
+    }
+    
+    console.log(`Found ${stationMap.size} unique stations`);
     
     // Use the specified day or extract it
     let day = specificDay ? specificDay.toString().padStart(2, '0') : '01';
@@ -196,13 +208,10 @@ function parseAirQualityHtml(html, parameter, year, month, specificDay = null) {
         }
       }
       
-      // Process each station's data
-      for (let stationIndex = 0; stationIndex < stations.length; stationIndex++) {
-        const cellIndex = stationStartIndex + stationIndex;
-        
+      // Process each unique station
+      for (const [stationId, cellIndex] of stationMap.entries()) {
         if (cellIndex >= cells.length) continue;
         
-        const stationId = stations[stationIndex];
         const valueCell = cells[cellIndex];
         const valueText = valueCell.textContent.trim();
         
@@ -215,23 +224,35 @@ function parseAirQualityHtml(html, parameter, year, month, specificDay = null) {
             const value = parseFloat(cleanValue);
             
             if (!isNaN(value)) {
-              // Add the data point
-              data.push({
-                date: `${year}-${month}-${day}`,
-                hour: formattedHour,
-                value: value,
-                station: stationId,
-                parameter: parameter
-              });
+              // Create a unique key for this data point
+              const dateString = `${year}-${month}-${day}`;
+              const entryKey = `${dateString}-${formattedHour}-${stationId}`;
               
-              console.log(`Added data: ${year}-${month}-${day} ${formattedHour}:00, Station: ${stationId}, Value: ${value}`);
+              // Only add this data point if we haven't already processed it
+              if (!processedEntries.has(entryKey)) {
+                // Add to processed set
+                processedEntries.add(entryKey);
+                
+                // Add the data point
+                data.push({
+                  date: dateString,
+                  hour: formattedHour,
+                  value: value,
+                  station: stationId,
+                  parameter: parameter
+                });
+                
+                console.log(`Added data: ${dateString} ${formattedHour}:00, Station: ${stationId}, Value: ${value}`);
+              } else {
+                console.log(`Skipping duplicate: ${dateString} ${formattedHour}:00, Station: ${stationId}`);
+              }
             }
           }
         }
       }
     }
     
-    console.log(`Successfully extracted ${data.length} data points`);
+    console.log(`Successfully extracted ${data.length} unique data points`);
     
   } catch (error) {
     console.error('Error parsing HTML:', error);
