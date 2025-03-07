@@ -471,100 +471,151 @@
                 statusElement.style.display = 'block';
             }
             
-            // Function to fetch air quality data
-            async function fetchAirQualityData() {
-                // Get form values
-                const proxyUrl = document.getElementById('proxyUrl').value;
-                const parameter = document.getElementById('parameter').value;
-                const year = document.getElementById('year').value;
-                const month = document.getElementById('month').value;
-                const day = document.getElementById('day').value;
-                const hour = document.getElementById('hour').value;
-                const station = document.getElementById('station').value;
-                
-                // Show loading status
-                showStatus('loading', 'Fetching data from CDMX air quality monitoring network...');
-                
-                try {
-                    // Override the proxy URL if specified
-                    window.airQualityData.proxyUrl = proxyUrl;
-                    
-                    // Fetch the data using our data retrieval module
-                    const data = await window.airQualityData.fetch(parameter, year, month, day || null, hour || null, station || null);
-                    
-                    // Process the data
-                    const processed = window.airQualityData.process(data);
-                    
-                    // Show success status
-                    showStatus('success', `Successfully retrieved ${data.length} data points`);
-                    
-                    // Display the results
-                    displayResults(data, processed, parameter);
-                    
-                    // Show results container
-                    document.getElementById('resultsContainer').style.display = 'block';
-                } catch (error) {
-                    console.error('Error fetching data:', error);
-                    showStatus('error', `Error: ${error.message}`);
-                }
-            }
+// Function to fetch air quality data
+async function fetchAirQualityData() {
+    // Get form values
+    const proxyUrl = document.getElementById('proxyUrl').value;
+    const parameter = document.getElementById('parameter').value;
+    const year = document.getElementById('year').value;
+    const month = document.getElementById('month').value;
+    const day = document.getElementById('day').value;
+    const hour = document.getElementById('hour').value;
+    const station = document.getElementById('station').value;
+    
+    // Show loading status
+    showStatus('loading', 'Fetching data from CDMX air quality monitoring network...');
+    
+    try {
+        // Override the proxy URL if specified
+        window.airQualityData.proxyUrl = proxyUrl;
+        
+        // Fetch the data using our data retrieval module
+        const data = await window.airQualityData.fetch(
+            parameter, 
+            year, 
+            month, 
+            day || null, 
+            hour || null, 
+            station || null
+        );
+        
+        // Process the data
+        const processed = window.airQualityData.process(data);
+        
+        // Show success status
+        showStatus('success', `Successfully retrieved ${data.length} data points`);
+        
+        // Display the results with filtering
+        displayResults(data, processed, parameter);
+        
+        // Show results container
+        document.getElementById('resultsContainer').style.display = 'block';
+    } catch (error) {
+        console.error('Error fetching data:', error);
+        showStatus('error', `Error: ${error.message}`);
+    }
+}
             
-            // Function to display results
-            function displayResults(data, processed, parameter) {
-                // Update query summary
-                displayQuerySummary(data, parameter);
-                
-                // Display statistics
-                displayStatistics(data, processed);
-                
-                // Display raw data table
-                displayRawData(data, parameter);
-                
-                // Display hourly averages
-                displayHourlyAverages(processed.hourlyAverages, parameter);
-                
-                // Display station data
-                displayStationData(processed.stations, parameter);
-                
-                // Display chart
-                displayChart(processed, parameter);
-            }
-            
-            // Function to display query summary
-            function displayQuerySummary(data, parameter) {
-                const querySummary = document.getElementById('querySummary');
-                
-                // Get form values
-                const year = document.getElementById('year').value;
-                const month = document.getElementById('month').value;
-                const day = document.getElementById('day').value;
-                const hour = document.getElementById('hour').value;
-                const station = document.getElementById('station').value;
-                
-                // Build summary
-                let summary = `<p><strong>Parameter:</strong> ${parameter.toUpperCase()}</p>`;
-                summary += `<p><strong>Date:</strong> ${year}-${month}${day ? '-'+day : ''}</p>`;
-                
-                if (hour) {
-                    summary += `<p><strong>Hour:</strong> ${hour}:00</p>`;
-                }
-                
-                if (station) {
-                    summary += `<p><strong>Station:</strong> ${station}</p>`;
-                }
-                
-                // Get the actual date from the data if available
-                if (data.length > 0) {
-                    const dates = [...new Set(data.map(item => item.date))];
-                    if (dates.length === 1) {
-                        summary += `<p><strong>Retrieved date:</strong> ${dates[0]}</p>`;
-                    } else if (dates.length > 1) {
-                        summary += `<p><strong>Date range:</strong> ${dates[0]} to ${dates[dates.length-1]}</p>`;
-                    }
-                }
-                
-                querySummary.innerHTML = summary;
-            }
+// Function to display results
+function displayResults(data, processed, parameter) {
+    // Filter data according to the selected parameters
+    const day = document.getElementById('day').value;
+    const hour = document.getElementById('hour').value;
+    const station = document.getElementById('station').value;
+    
+    let filteredData = data;
+    
+    // Apply filters based on selected parameters
+    if (station) {
+        filteredData = filteredData.filter(item => item.station === station);
+    }
+    
+    if (day && hour) {
+        // Filter for specific date and hour
+        filteredData = filteredData.filter(item => 
+            item.date.endsWith(`-${day}`) && item.hour === hour);
+    } else if (day) {
+        // Filter for specific date only
+        filteredData = filteredData.filter(item => 
+            item.date.endsWith(`-${day}`));
+    } else if (hour) {
+        // Filter for specific hour only
+        filteredData = filteredData.filter(item => 
+            item.hour === hour);
+    }
+    
+    // Re-process filtered data to get correct averages
+    const filteredProcessed = processAirQualityData(filteredData);
+
+    // Update query summary
+    displayQuerySummary(filteredData, parameter, day, hour, station);
+    
+    // Display statistics
+    displayStatistics(filteredData, filteredProcessed);
+    
+    // Display raw data table
+    displayRawData(filteredData, parameter);
+    
+    // Display hourly averages
+    if (!hour) {
+        // Only show hourly averages if not filtered to a specific hour
+        displayHourlyAverages(filteredProcessed.hourlyAverages, parameter);
+        document.getElementById('averagesContainer').style.display = 'block';
+    } else {
+        document.getElementById('averagesContainer').style.display = 'none';
+    }
+    
+    // Display station data
+    if (!station) {
+        // Only show station breakdown if not filtered to a specific station
+        displayStationData(filteredProcessed.stations, parameter);
+        document.getElementById('stationsContainer').style.display = 'block';
+    } else {
+        document.getElementById('stationsContainer').style.display = 'none';
+    }
+    
+    // Display chart
+    displayChart(filteredProcessed, parameter);
+}
+
+// Function to display query summary
+function displayQuerySummary(data, parameter, day, hour, station) {
+    const querySummary = document.getElementById('querySummary');
+    
+    // Get form values
+    const year = document.getElementById('year').value;
+    const month = document.getElementById('month').value;
+    
+    // Build summary
+    let summary = `<p><strong>Parameter:</strong> ${parameter.toUpperCase()}</p>`;
+    
+    if (day) {
+        summary += `<p><strong>Date:</strong> ${year}-${month}-${day}</p>`;
+    } else {
+        summary += `<p><strong>Month:</strong> ${year}-${month}</p>`;
+    }
+    
+    if (hour) {
+        summary += `<p><strong>Hour:</strong> ${hour}:00</p>`;
+    }
+    
+    if (station) {
+        summary += `<p><strong>Station:</strong> ${station}</p>`;
+    }
+    
+    // Show result count
+    summary += `<p><strong>Results:</strong> ${data.length} data points displayed</p>`;
+    
+    // Get date range if multiple dates
+    if (!day && data.length > 0) {
+        const dates = [...new Set(data.map(item => item.date))].sort();
+        if (dates.length > 1) {
+            summary += `<p><strong>Date Range:</strong> ${dates[0]} to ${dates[dates.length-1]}</p>`;
+        }
+    }
+    
+    querySummary.innerHTML = summary;
+}
             
             // Function to display statistics
             function displayStatistics(data, processed) {
