@@ -553,6 +553,54 @@
             
             // Fetch data button
             document.getElementById('fetchDataBtn').addEventListener('click', fetchAirQualityData);
+            // When the Compare button is clicked
+            document.getElementById('compareBtn').addEventListener('click', function() {
+                const stationCompare = document.getElementById('stationCompare');
+                const selectedStations = Array.from(stationCompare.selectedOptions).map(option => option.value);
+                
+                if (selectedStations.length === 0) {
+                    showStatus('info', 'Please select at least one station to compare.');
+                    return;
+                }
+                
+                // Show loading status
+                showStatus('loading', `Comparing ${selectedStations.length} stations...`);
+                
+                // We'll reuse the existing data if already fetched
+                if (window.currentData && window.currentProcessed) {
+                    displayResults(window.currentData, window.currentProcessed, document.getElementById('parameter').value);
+                    
+                    // For instant feedback, switch to the chart tab
+                    document.querySelector('.tab-button[data-tab="tabChart"]').click();
+                    
+                    showStatus('success', `Showing comparison of ${selectedStations.length} stations`);
+                } else {
+                    // If no data is loaded yet, trigger the fetch
+                    document.getElementById('fetchDataBtn').click();
+                }
+            });
+            
+            // When the Clear Comparison button is clicked
+            document.getElementById('clearCompareBtn').addEventListener('click', function() {
+                const stationCompare = document.getElementById('stationCompare');
+                
+                // Clear all selected options
+                for (let i = 0; i < stationCompare.options.length; i++) {
+                    stationCompare.options[i].selected = false;
+                }
+                
+                // If we have data, update the display
+                if (window.currentData && window.currentProcessed) {
+                    displayResults(window.currentData, window.currentProcessed, document.getElementById('parameter').value);
+                    showStatus('info', 'Station comparison cleared');
+                }
+            })
+            // Add this to your displayResults function to store the current data for comparison use
+            function displayResults(data, processed, parameter) {
+                // Store the data for comparison use
+                window.currentData = data;
+                window.currentProcessed = processed;
+            }
             
             // Function to show status message
             function showStatus(type, message) {
@@ -562,50 +610,153 @@
                 statusElement.style.display = 'block';
             }
             
-// Function to fetch air quality data
-async function fetchAirQualityData() {
-    // Get form values
-    const proxyUrl = document.getElementById('proxyUrl').value;
-    const parameter = document.getElementById('parameter').value;
-    const year = document.getElementById('year').value;
-    const month = document.getElementById('month').value;
-    const day = document.getElementById('day').value;
-    const hour = document.getElementById('hour').value;
-    const station = document.getElementById('station').value;
-    
-    // Show loading status
-    showStatus('loading', 'Fetching data from CDMX air quality monitoring network...');
-    
-    try {
-        // Override the proxy URL if specified
-        window.airQualityData.proxyUrl = proxyUrl;
-        
-        // Fetch the data using our data retrieval module
-        const data = await window.airQualityData.fetch(
-            parameter, 
-            year, 
-            month, 
-            day || null, 
-            hour || null, 
-            station || null
-        );
-        
-        // Process the data
-        const processed = window.airQualityData.process(data);
-        
-        // Show success status
-        showStatus('success', `Successfully retrieved ${data.length} data points`);
-        
-        // Display the results with filtering
-        displayResults(data, processed, parameter);
-        
-        // Show results container
-        document.getElementById('resultsContainer').style.display = 'block';
-    } catch (error) {
-        console.error('Error fetching data:', error);
-        showStatus('error', `Error: ${error.message}`);
-    }
-}
+            // Function to fetch air quality data
+            async function fetchAirQualityData() {
+                // Get form values
+                const proxyUrl = document.getElementById('proxyUrl').value;
+                const parameter = document.getElementById('parameter').value;
+                const year = document.getElementById('year').value;
+                const month = document.getElementById('month').value;
+                const day = document.getElementById('day').value;
+                const hour = document.getElementById('hour').value;
+                const station = document.getElementById('station').value;
+                
+                // Show loading status
+                showStatus('loading', 'Fetching data from CDMX air quality monitoring network...');
+                
+                try {
+                    // Override the proxy URL if specified
+                    window.airQualityData.proxyUrl = proxyUrl;
+                    
+                    // Handle the "all years" and "all months" options
+                    let combinedData = [];
+                    
+                    if (year === 'all' && month === 'all') {
+                        // Limit to last 3 years to avoid too much data
+                        const currentDate = new Date();
+                        const currentYear = currentDate.getFullYear();
+                        showStatus('loading', 'Fetching multiple years of data (this may take a while)...');
+                        
+                        // Fetch last 3 years of data, one month at a time
+                        for (let y = currentYear; y >= currentYear - 2; y--) {
+                            for (let m = 1; m <= 12; m++) {
+                                // Skip future months in current year
+                                if (y === currentYear && m > currentDate.getMonth() + 1) {
+                                    continue;
+                                }
+                                
+                                const monthStr = m.toString().padStart(2, '0');
+                                showStatus('loading', `Fetching data for ${y}-${monthStr}...`);
+                                
+                                try {
+                                    const monthData = await window.airQualityData.fetch(
+                                        parameter, 
+                                        y.toString(), 
+                                        monthStr, 
+                                        day || null, 
+                                        hour || null, 
+                                        station || null
+                                    );
+                                    combinedData = combinedData.concat(monthData);
+                                    showStatus('loading', `Retrieved ${monthData.length} data points for ${y}-${monthStr}. Total: ${combinedData.length} points...`);
+                                } catch (err) {
+                                    console.warn(`Error fetching ${y}-${monthStr}:`, err);
+                                    // Continue despite errors
+                                }
+                            }
+                        }
+                    } 
+                    else if (year === 'all') {
+                        // Fetch the selected month across multiple years
+                        const currentDate = new Date();
+                        const currentYear = currentDate.getFullYear();
+                        showStatus('loading', 'Fetching multiple years of data (this may take a while)...');
+                        
+                        // Fetch last 5 years for the specific month
+                        for (let y = currentYear; y >= currentYear - 4; y--) {
+                            // Skip future months
+                            if (y === currentYear && parseInt(month) > currentDate.getMonth() + 1) {
+                                continue;
+                            }
+                            
+                            showStatus('loading', `Fetching data for ${y}-${month}...`);
+                            
+                            try {
+                                const yearData = await window.airQualityData.fetch(
+                                    parameter, 
+                                    y.toString(), 
+                                    month, 
+                                    day || null, 
+                                    hour || null, 
+                                    station || null
+                                );
+                                combinedData = combinedData.concat(yearData);
+                                showStatus('loading', `Retrieved ${yearData.length} data points for ${y}-${month}. Total: ${combinedData.length} points...`);
+                            } catch (err) {
+                                console.warn(`Error fetching ${y}-${month}:`, err);
+                                // Continue despite errors
+                            }
+                        }
+                    } 
+                    else if (month === 'all') {
+                        // Fetch all months for a specific year
+                        showStatus('loading', `Fetching all months for ${year}...`);
+                        
+                        // Limit to months that have already passed in current year
+                        const currentDate = new Date();
+                        const maxMonth = (parseInt(year) === currentDate.getFullYear()) 
+                            ? currentDate.getMonth() + 1 
+                            : 12;
+                        
+                        for (let m = 1; m <= maxMonth; m++) {
+                            const monthStr = m.toString().padStart(2, '0');
+                            showStatus('loading', `Fetching data for ${year}-${monthStr}...`);
+                            
+                            try {
+                                const monthData = await window.airQualityData.fetch(
+                                    parameter, 
+                                    year, 
+                                    monthStr, 
+                                    day || null, 
+                                    hour || null, 
+                                    station || null
+                                );
+                                combinedData = combinedData.concat(monthData);
+                                showStatus('loading', `Retrieved ${monthData.length} data points for ${year}-${monthStr}. Total: ${combinedData.length} points...`);
+                            } catch (err) {
+                                console.warn(`Error fetching ${year}-${monthStr}:`, err);
+                                // Continue despite errors
+                            }
+                        }
+                    } 
+                    else {
+                        // Regular single month fetch
+                        combinedData = await window.airQualityData.fetch(
+                            parameter, 
+                            year, 
+                            month, 
+                            day || null, 
+                            hour || null, 
+                            station || null
+                        );
+                    }
+                    
+                    // Process the data
+                    const processed = window.airQualityData.process(combinedData);
+                    
+                    // Show success status
+                    showStatus('success', `Successfully retrieved ${combinedData.length} data points`);
+                    
+                    // Display the results with filtering
+                    displayResults(combinedData, processed, parameter);
+                    
+                    // Show results container
+                    document.getElementById('resultsContainer').style.display = 'block';
+                } catch (error) {
+                    console.error('Error fetching data:', error);
+                    showStatus('error', `Error: ${error.message}`);
+                }
+            }
             
 // Function to display results
 function displayResults(data, processed, parameter) {
