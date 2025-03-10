@@ -898,6 +898,7 @@ function displayQuerySummary(data, parameter, day, hour, station) {
             }
             
 // Function to display chart using Plotly
+// Function to display chart using Plotly
 function displayChart(processed, parameter) {
     // Get the chart container
     const chartContainer = document.getElementById('chartContainer');
@@ -952,7 +953,6 @@ function displayChart(processed, parameter) {
         }];
         
         // Add annotation for the threshold line with more space
-        // Moved up from y: 158 to y: 165 to add more space
         layout.annotations = [{
             x: 0.05,  // Moved from 0.02 to 0.05 for spacing
             y: 165,   // Increased from 158 to 165 for more space
@@ -967,8 +967,17 @@ function displayChart(processed, parameter) {
         }];
     }
     
+    // Get comparison stations from dropdown if it exists
+    const comparisonSelect = document.getElementById('stationCompare');
+    let comparisonStations = [];
+    
+    if (comparisonSelect && comparisonSelect.value) {
+        comparisonStations = comparisonSelect.value.split(',').filter(s => s.trim() !== '');
+    }
+    
     // Check if we have hourly averages or need to show by station
-    if (processed.hourlyAverages && processed.hourlyAverages.length > 0) {
+    if (processed.hourlyAverages && processed.hourlyAverages.length > 0 && 
+        (!comparisonStations.length && !selectedStation)) {
         // Use hourly averages (single line chart)
         const data = processed.hourlyAverages;
         
@@ -978,30 +987,35 @@ function displayChart(processed, parameter) {
             return parseInt(a.hour) - parseInt(b.hour);
         });
         
-        // Prepare x and y values for plotting
-        const x = data.map(item => `${item.date} ${item.hour}:00`);
-        const y = data.map(item => item.value);
-        
-        // Create trace for Plotly
-        const trace = {
-            x: x,
-            y: y,
-            mode: 'lines',  // No markers, just lines
-            line: {
-                color: 'black',
-                width: 1.5,
-                shape: 'linear'  // Don't connect null values
-            },
-            connectgaps: false,  // Important: Don't connect across null values
+        // Create traces with explicit null gaps (important fix)
+        const traces = createTracesWithGaps(data, 'date', 'hour', 'value', {
+            color: 'black',
             name: `${parameter.toUpperCase()} - Hourly Average`
-        };
+        });
         
-        plotData.push(trace);
+        plotData.push(...traces);
     } else if (Object.keys(processed.stations).length > 0) {
-        // Show data by station (multiple lines)
+        // Which stations to show
+        let stationsToShow = [];
         
-        // Create a trace for each station
-        Object.keys(processed.stations).forEach((stationId, index) => {
+        // If comparison is active, use those stations
+        if (comparisonStations.length > 0) {
+            stationsToShow = comparisonStations;
+        } 
+        // Otherwise if a specific station is selected
+        else if (selectedStation) {
+            stationsToShow = [selectedStation];
+        } 
+        // Otherwise show all stations
+        else {
+            stationsToShow = Object.keys(processed.stations);
+        }
+        
+        // Create a trace for each station we want to show
+        stationsToShow.forEach((stationId, index) => {
+            // Skip if station doesn't exist in our data
+            if (!processed.stations[stationId]) return;
+            
             const stationData = processed.stations[stationId];
             
             // Skip if no data
@@ -1013,59 +1027,17 @@ function displayChart(processed, parameter) {
                 return parseInt(a.hour) - parseInt(b.hour);
             });
             
-            // IMPORTANT: Process data points to properly handle null values (NR values)
-            // Plotly won't show gaps if we simply pass null values in the array
-            // We need to create separate non-continuous data points
-            
-            let cleanedData = [];
-            let currentGroup = [];
-            
-            // Process each data point to create breaks for null values
-            stationData.forEach((item, i) => {
-                if (item.value !== null) {
-                    // Add this valid data point to the current group
-                    currentGroup.push(item);
-                } else {
-                    // If we have accumulated points and hit a null, store the group and start a new one
-                    if (currentGroup.length > 0) {
-                        cleanedData.push([...currentGroup]);
-                        currentGroup = [];
-                    }
-                }
-            });
-            
-            // Add the last group if it's not empty
-            if (currentGroup.length > 0) {
-                cleanedData.push(currentGroup);
-            }
-            
             // Generate a color based on index for consistent station colors
             const hue = (index * 137) % 360;  // Use golden ratio to distribute colors
             const stationColor = `hsl(${hue}, 70%, 40%)`;
             
-            // Create a trace for each continuous segment (separated by nulls)
-            cleanedData.forEach((segment, segIndex) => {
-                // Convert data for this segment
-                const x = segment.map(item => `${item.date} ${item.hour}:00`);
-                const y = segment.map(item => item.value);
-                
-                // Create trace for Plotly
-                const trace = {
-                    x: x,
-                    y: y,
-                    mode: 'lines',  // No markers, just lines
-                    line: {
-                        color: stationColor,
-                        width: 1.5,
-                        shape: 'linear'
-                    },
-                    // Only show the station name in the legend for the first segment
-                    name: segIndex === 0 ? stationId : stationId + ' (cont.)',
-                    showlegend: segIndex === 0  // Only show in legend once
-                };
-                
-                plotData.push(trace);
+            // Create traces with explicit null gaps (important fix)
+            const traces = createTracesWithGaps(stationData, 'date', 'hour', 'value', {
+                color: stationColor,
+                name: stationId
             });
+            
+            plotData.push(...traces);
         });
     } else {
         // No data to chart
@@ -1075,6 +1047,58 @@ function displayChart(processed, parameter) {
     
     // Create the plot
     Plotly.newPlot(chartContainer, plotData, layout, {responsive: true});
+}
+
+// Helper function to create trace segments with proper gaps for null values
+function createTracesWithGaps(data, dateField, timeField, valueField, options) {
+    const result = [];
+    let currentSegment = [];
+    
+    // Process the data points
+    for (let i = 0; i < data.length; i++) {
+        const item = data[i];
+        
+        // If this is a valid data point, add it to the current segment
+        if (item[valueField] !== null && item[valueField] !== undefined) {
+            currentSegment.push(item);
+            
+            // If this is the last item, add the segment
+            if (i === data.length - 1 && currentSegment.length > 0) {
+                result.push(createTraceSegment(currentSegment, dateField, timeField, valueField, options, result.length));
+            }
+        } 
+        // If we hit a null value
+        else {
+            // If we have points in the current segment, finalize it
+            if (currentSegment.length > 0) {
+                result.push(createTraceSegment(currentSegment, dateField, timeField, valueField, options, result.length));
+                currentSegment = []; // Reset the segment
+            }
+        }
+    }
+    
+    return result;
+}
+
+// Helper function to create a trace segment
+function createTraceSegment(segment, dateField, timeField, valueField, options, segmentIndex) {
+    // Extract x and y values
+    const x = segment.map(item => `${item[dateField]} ${item[timeField]}:00`);
+    const y = segment.map(item => item[valueField]);
+    
+    // Create the trace
+    return {
+        x: x,
+        y: y,
+        mode: 'lines',
+        line: {
+            color: options.color || 'black',
+            width: 1.5
+        },
+        name: options.name || '',
+        // Only show in legend for the first segment
+        showlegend: segmentIndex === 0
+    };
 }
             
 
