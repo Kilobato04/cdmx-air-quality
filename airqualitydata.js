@@ -298,20 +298,23 @@ function processAirQualityData(data) {
   });
   
   // Calculate hourly averages across all stations
-  const hourlyAverages = {};
-  
-  data.forEach(item => {
-    const key = `${item.date} ${item.hour}`;
-    if (!hourlyAverages[key]) {
-      hourlyAverages[key] = {
-        sum: item.value,
-        count: 1
-      };
-    } else {
-      hourlyAverages[key].sum += item.value;
-      hourlyAverages[key].count += 1;
-    }
-  });
+    const hourlyAverages = {};
+    
+    data.forEach(item => {
+      // Skip null values when calculating averages
+      if (item.value === null) return;
+      
+      const key = `${item.date} ${item.hour}`;
+      if (!hourlyAverages[key]) {
+        hourlyAverages[key] = {
+          sum: item.value,
+          count: 1
+        };
+      } else {
+        hourlyAverages[key].sum += item.value;
+        hourlyAverages[key].count += 1;
+      }
+    });
   
   const averagesArray = Object.entries(hourlyAverages).map(([key, data]) => {
     const [date, hour] = key.split(' ');
