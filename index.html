@@ -751,13 +751,15 @@ function displayQuerySummary(data, parameter, day, hour, station) {
                 
                 // Add rows
                 displayData.forEach(item => {
-                    const quality = window.airQualityData.getCategory(parameter, item.value);
+                    const quality = item.value !== null ? 
+                        window.airQualityData.getCategory(parameter, item.value) : 
+                        { category: 'No Data', color: '#cccccc' };
                     
                     html += `
                         <tr>
                             <td>${item.date}</td>
                             <td>${item.hour}:00</td>
-                            <td>${item.value}</td>
+                            <td>${item.value !== null ? item.value : item.rawValue}</td>
                             <td>${item.station}</td>
                             <td style="background-color: ${quality.color}; color: ${getContrastColor(quality.color)}">
                                 ${quality.category}
