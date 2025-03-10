@@ -283,57 +283,57 @@ function parseAirQualityHtml(html, parameter, year, month, specificDay = null, s
 }
 // Function to process data and calculate statistics
 function processAirQualityData(data) {
-  if (!data || data.length === 0) {
-    return { stations: {}, hourlyAverages: [] };
-  }
-  
-  // Group by station
-  const stationData = {};
-  
-  data.forEach(item => {
-    if (!stationData[item.station]) {
-      stationData[item.station] = [];
+    if (!data || data.length === 0) {
+        return { stations: {}, hourlyAverages: [] };
     }
-    stationData[item.station].push(item);
-  });
-  
-  // Calculate hourly averages across all stations
+    
+    // Group by station
+    const stationData = {};
+    
+    data.forEach(item => {
+        if (!stationData[item.station]) {
+            stationData[item.station] = [];
+        }
+        stationData[item.station].push(item);
+    });
+    
+    // Calculate hourly averages across all stations
     const hourlyAverages = {};
     
     data.forEach(item => {
-      // Skip null values when calculating averages
-      if (item.value === null) return;
-      
-      const key = `${item.date} ${item.hour}`;
-      if (!hourlyAverages[key]) {
-        hourlyAverages[key] = {
-          sum: item.value,
-          count: 1
-        };
-      } else {
-        hourlyAverages[key].sum += item.value;
-        hourlyAverages[key].count += 1;
-      }
+        // Skip null values when calculating averages
+        if (item.value === null) return;
+        
+        const key = `${item.date} ${item.hour}`;
+        if (!hourlyAverages[key]) {
+            hourlyAverages[key] = {
+                sum: item.value,
+                count: 1
+            };
+        } else {
+            hourlyAverages[key].sum += item.value;
+            hourlyAverages[key].count += 1;
+        }
     });
-  
-  const averagesArray = Object.entries(hourlyAverages).map(([key, data]) => {
-    const [date, hour] = key.split(' ');
+    
+    const averagesArray = Object.entries(hourlyAverages).map(([key, data]) => {
+        const [date, hour] = key.split(' ');
+        return {
+            date,
+            hour,
+            value: parseFloat((data.sum / data.count).toFixed(1)),
+            stationCount: data.count
+        };
+    }).sort((a, b) => {
+        // Sort by date then hour
+        if (a.date !== b.date) return a.date.localeCompare(b.date);
+        return parseInt(a.hour) - parseInt(b.hour);
+    });
+    
     return {
-      date,
-      hour,
-      value: parseFloat((data.sum / data.count).toFixed(1)),
-      stationCount: data.count
+        stations: stationData,
+        hourlyAverages: averagesArray
     };
-  }).sort((a, b) => {
-    // Sort by date then hour
-    if (a.date !== b.date) return a.date.localeCompare(b.date);
-    return parseInt(a.hour) - parseInt(b.hour);
-  });
-  
-  return {
-    stations: stationData,
-    hourlyAverages: averagesArray
-  };
 }
 
 // Function to get air quality category based on parameter and value
