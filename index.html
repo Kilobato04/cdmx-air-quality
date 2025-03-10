@@ -897,45 +897,104 @@ function displayQuerySummary(data, parameter, day, hour, station) {
                 container.innerHTML = html;
             }
             
-            // Function to display chart
+            // Function to display chart using Plotly
             function displayChart(processed, parameter) {
-                // Get the canvas element
+                // Get the chart container
                 const chartContainer = document.getElementById('chartContainer');
-                chartContainer.innerHTML = '<canvas id="airQualityChart"></canvas>';
+                chartContainer.innerHTML = '';
                 
-                const ctx = document.getElementById('airQualityChart').getContext('2d');
+                let plotData = [];
+                let layout = {
+                    title: `${parameter.toUpperCase()} Air Quality Data`,
+                    xaxis: {
+                        title: 'Date & Time',
+                        tickangle: -45,
+                        tickfont: {
+                            size: 10
+                        }
+                    },
+                    yaxis: {
+                        title: `${parameter.toUpperCase()} (${getParameterUnit(parameter)})`,
+                        zeroline: false
+                    },
+                    showlegend: true,
+                    hovermode: 'closest',
+                    margin: {
+                        l: 50,
+                        r: 50,
+                        b: 70,
+                        t: 50,
+                        pad: 4
+                    }
+                };
                 
-                // Destroy previous chart if it exists and has a destroy method
-                if (window.airQualityChart && typeof window.airQualityChart.destroy === 'function') {
-                    window.airQualityChart.destroy();
+                // Add threshold line for ozone at 155 ppb
+                if (parameter.toLowerCase() === 'o3') {
+                    layout.shapes = [{
+                        type: 'line',
+                        x0: 0,
+                        y0: 155,
+                        x1: 1,
+                        y1: 155,
+                        xref: 'paper',
+                        yref: 'y',
+                        line: {
+                            color: 'red',
+                            width: 2,
+                            dash: 'dash'
+                        }
+                    }];
+                    
+                    // Add annotation for the threshold line
+                    layout.annotations = [{
+                        x: 0.02,
+                        y: 158,
+                        xref: 'paper',
+                        yref: 'y',
+                        text: 'Smog Alert Phase I Threshold (155 ppb)',
+                        showarrow: false,
+                        font: {
+                            color: 'red',
+                            size: 12
+                        }
+                    }];
                 }
-                
-                // Prepare data for the chart
-                let chartData;
                 
                 // Check if we have hourly averages or need to show by station
                 if (processed.hourlyAverages && processed.hourlyAverages.length > 0) {
                     // Use hourly averages (single line chart)
-                    const labels = processed.hourlyAverages.map(item => `${item.date} ${item.hour}:00`);
-                    const values = processed.hourlyAverages.map(item => item.value);
+                    const data = processed.hourlyAverages;
                     
-                    chartData = {
-                      labels: labels,
-                      datasets: [{
-                        label: `${parameter.toUpperCase()} - Hourly Average`,
-                        data: values,
-                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        borderWidth: 1,
-                        spanGaps: false // Add this line to prevent connecting across null values
-                      }]
+                    // Sort data by date and time
+                    data.sort((a, b) => {
+                        if (a.date !== b.date) return a.date.localeCompare(b.date);
+                        return parseInt(a.hour) - parseInt(b.hour);
+                    });
+                    
+                    // Prepare x and y values for plotting
+                    const x = data.map(item => `${item.date} ${item.hour}:00`);
+                    const y = data.map(item => item.value);
+                    
+                    // Create trace for Plotly
+                    const trace = {
+                        x: x,
+                        y: y,
+                        mode: 'lines',  // No markers, just lines
+                        line: {
+                            color: 'black',
+                            width: 1.5,
+                            shape: 'linear'  // Don't connect null values
+                        },
+                        connectgaps: false,  // Don't connect across null values
+                        name: `${parameter.toUpperCase()} - Hourly Average`
                     };
+                    
+                    plotData.push(trace);
                 } else if (Object.keys(processed.stations).length > 0) {
                     // Show data by station (multiple lines)
-                    const datasets = [];
                     
-                    // Create a dataset for each station
-                    Object.keys(processed.stations).forEach(stationId => {
+                    // Create a trace for each station
+                    Object.keys(processed.stations).forEach((stationId, index) => {
                         const stationData = processed.stations[stationId];
                         
                         // Skip if no data
@@ -947,68 +1006,37 @@ function displayQuerySummary(data, parameter, day, hour, station) {
                             return parseInt(a.hour) - parseInt(b.hour);
                         });
                         
-                        // Create a random color for this station
-                        const colorHue = Math.floor(Math.random() * 360);
+                        // Prepare x and y values for plotting
+                        const x = stationData.map(item => `${item.date} ${item.hour}:00`);
+                        const y = stationData.map(item => item.value);
                         
-                        datasets.push({
-                          label: stationId,
-                          data: stationData.map(item => ({
-                            x: `${item.date} ${item.hour}:00`,
-                            y: item.value // This will be null for 'NR' values, creating gaps
-                          })),
-                          backgroundColor: `hsla(${colorHue}, 70%, 60%, 0.2)`,
-                          borderColor: `hsla(${colorHue}, 70%, 40%, 1)`,
-                          borderWidth: 1,
-                          spanGaps: false // Add this line to prevent connecting across null values
-                        });
+                        // Generate a color based on index
+                        const hue = (index * 137) % 360;  // Use golden ratio to distribute colors
+                        
+                        // Create trace for Plotly
+                        const trace = {
+                            x: x,
+                            y: y,
+                            mode: 'lines',  // No markers, just lines
+                            line: {
+                                color: `hsl(${hue}, 70%, 40%)`,
+                                width: 1.5,
+                                shape: 'linear'  // Don't connect null values
+                            },
+                            connectgaps: false,  // Don't connect across null values
+                            name: stationId
+                        };
+                        
+                        plotData.push(trace);
                     });
-                    
-                    chartData = {
-                        datasets: datasets
-                    };
                 } else {
                     // No data to chart
                     chartContainer.innerHTML = '<p>No data available to chart</p>';
                     return;
                 }
                 
-                // Create the chart
-                window.airQualityChart = new Chart(ctx, {
-                    type: 'line',
-                    data: chartData,
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            x: {
-                                title: {
-                                    display: true,
-                                    text: 'Date & Time'
-                                },
-                                ticks: {
-                                    maxRotation: 45,
-                                    minRotation: 45
-                                }
-                            },
-                            y: {
-                                title: {
-                                    display: true,
-                                    text: `${parameter.toUpperCase()} (${getParameterUnit(parameter)})`
-                                }
-                            }
-                        },
-                        plugins: {
-                            title: {
-                                display: true,
-                                text: `${parameter.toUpperCase()} Air Quality Data`
-                            },
-                            tooltip: {
-                                mode: 'index',
-                                intersect: false
-                            }
-                        }
-                    }
-                });
+                // Create the plot
+                Plotly.newPlot(chartContainer, plotData, layout, {responsive: true});
             }
             
 
