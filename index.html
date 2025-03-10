@@ -921,14 +921,15 @@ function displayQuerySummary(data, parameter, day, hour, station) {
                     const values = processed.hourlyAverages.map(item => item.value);
                     
                     chartData = {
-                        labels: labels,
-                        datasets: [{
-                            label: `${parameter.toUpperCase()} - Hourly Average`,
-                            data: values,
-                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                            borderColor: 'rgba(54, 162, 235, 1)',
-                            borderWidth: 1
-                        }]
+                      labels: labels,
+                      datasets: [{
+                        label: `${parameter.toUpperCase()} - Hourly Average`,
+                        data: values,
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1,
+                        spanGaps: false // Add this line to prevent connecting across null values
+                      }]
                     };
                 } else if (Object.keys(processed.stations).length > 0) {
                     // Show data by station (multiple lines)
@@ -951,14 +952,15 @@ function displayQuerySummary(data, parameter, day, hour, station) {
                         const colorHue = Math.floor(Math.random() * 360);
                         
                         datasets.push({
-                            label: stationId,
-                            data: stationData.map(item => ({
-                                x: `${item.date} ${item.hour}:00`,
-                                y: item.value
-                            })),
-                            backgroundColor: `hsla(${colorHue}, 70%, 60%, 0.2)`,
-                            borderColor: `hsla(${colorHue}, 70%, 40%, 1)`,
-                            borderWidth: 1
+                          label: stationId,
+                          data: stationData.map(item => ({
+                            x: `${item.date} ${item.hour}:00`,
+                            y: item.value // This will be null for 'NR' values, creating gaps
+                          })),
+                          backgroundColor: `hsla(${colorHue}, 70%, 60%, 0.2)`,
+                          borderColor: `hsla(${colorHue}, 70%, 40%, 1)`,
+                          borderWidth: 1,
+                          spanGaps: false // Add this line to prevent connecting across null values
                         });
                     });
                     
