@@ -232,25 +232,41 @@ function parseAirQualityHtml(html, parameter, year, month, specificDay = null, s
         const valueCell = cells[colIndex];
         const valueText = valueCell.textContent.trim();
         
-        // Skip empty or special values
-        if (valueText && !['', '-', 'n/d', 'nr', 'nv', '**', 'na', 'n/a'].includes(valueText.toLowerCase())) {
-          // Clean and parse the value
-          const cleanText = valueText.replace(/[^\d.]/g, '');
-          
-          if (cleanText) {
-            const value = parseFloat(cleanText);
+        // Process all values, including special ones like 'NR'
+        if (valueText) {
+          // Check if it's a special value like 'NR', 'N/D', etc.
+          if (['', '-', 'n/d', 'nr', 'nv', '**', 'na', 'n/a'].includes(valueText.toLowerCase())) {
+            // Add a data point with null value but preserve the entry
+            data.push({
+              date: `${year}-${month}-${rowDay}`,
+              hour: formattedHour,
+              value: null,
+              rawValue: valueText.toUpperCase(), // Store the original text
+              station: stationName,
+              parameter: parameter
+            });
             
-            if (!isNaN(value)) {
-              // Add the data point
-              data.push({
-                date: `${year}-${month}-${rowDay}`,
-                hour: formattedHour,
-                value: value,
-                station: stationName,
-                parameter: parameter
-              });
+            console.log(`Added null data: ${year}-${month}-${rowDay} ${formattedHour}:00, Station: ${stationName}, Value: ${valueText}`);
+          } else {
+            // Parse the value for numeric entries
+            const cleanText = valueText.replace(/[^\d.]/g, '');
+            
+            if (cleanText) {
+              const value = parseFloat(cleanText);
               
-              console.log(`Added: ${year}-${month}-${rowDay} ${formattedHour}:00, Station: ${stationName}, Value: ${value}`);
+              if (!isNaN(value)) {
+                // Add the data point
+                data.push({
+                  date: `${year}-${month}-${rowDay}`,
+                  hour: formattedHour,
+                  value: value,
+                  rawValue: value.toString(),
+                  station: stationName,
+                  parameter: parameter
+                });
+                
+                console.log(`Added: ${year}-${month}-${rowDay} ${formattedHour}:00, Station: ${stationName}, Value: ${value}`);
+              }
             }
           }
         }
