@@ -897,147 +897,185 @@ function displayQuerySummary(data, parameter, day, hour, station) {
                 container.innerHTML = html;
             }
             
-            // Function to display chart using Plotly
-            function displayChart(processed, parameter) {
-                // Get the chart container
-                const chartContainer = document.getElementById('chartContainer');
-                chartContainer.innerHTML = '';
-                
-                let plotData = [];
-                let layout = {
-                    title: `${parameter.toUpperCase()} Air Quality Data`,
-                    xaxis: {
-                        title: 'Date & Time',
-                        tickangle: -45,
-                        tickfont: {
-                            size: 10
-                        }
-                    },
-                    yaxis: {
-                        title: `${parameter.toUpperCase()} (${getParameterUnit(parameter)})`,
-                        zeroline: false
-                    },
-                    showlegend: true,
-                    hovermode: 'closest',
-                    margin: {
-                        l: 50,
-                        r: 50,
-                        b: 70,
-                        t: 50,
-                        pad: 4
+// Function to display chart using Plotly
+function displayChart(processed, parameter) {
+    // Get the chart container
+    const chartContainer = document.getElementById('chartContainer');
+    chartContainer.innerHTML = '';
+    
+    // Get selected station for title display
+    const selectedStation = document.getElementById('station').value;
+    
+    let plotData = [];
+    let layout = {
+        // Add station name to title if a specific station is selected
+        title: selectedStation 
+            ? `${parameter.toUpperCase()} Air Quality Data - Station: ${selectedStation}`
+            : `${parameter.toUpperCase()} Air Quality Data`,
+        xaxis: {
+            title: 'Date & Time',
+            tickangle: -45,
+            tickfont: {
+                size: 10
+            }
+        },
+        yaxis: {
+            title: `${parameter.toUpperCase()} (${getParameterUnit(parameter)})`,
+            zeroline: false
+        },
+        showlegend: true,
+        hovermode: 'closest',
+        margin: {
+            l: 50,
+            r: 50,
+            b: 70,
+            t: 50,
+            pad: 4
+        }
+    };
+    
+    // Add threshold line for ozone at 155 ppb
+    if (parameter.toLowerCase() === 'o3') {
+        layout.shapes = [{
+            type: 'line',
+            x0: 0,
+            y0: 155,
+            x1: 1,
+            y1: 155,
+            xref: 'paper',
+            yref: 'y',
+            line: {
+                color: 'red',
+                width: 2,
+                dash: 'dash'
+            }
+        }];
+        
+        // Add annotation for the threshold line with more space
+        // Moved up from y: 158 to y: 165 to add more space
+        layout.annotations = [{
+            x: 0.05,  // Moved from 0.02 to 0.05 for spacing
+            y: 165,   // Increased from 158 to 165 for more space
+            xref: 'paper',
+            yref: 'y',
+            text: 'Smog Alert Phase I Threshold (155 ppb)',
+            showarrow: false,
+            font: {
+                color: 'red',
+                size: 12
+            }
+        }];
+    }
+    
+    // Check if we have hourly averages or need to show by station
+    if (processed.hourlyAverages && processed.hourlyAverages.length > 0) {
+        // Use hourly averages (single line chart)
+        const data = processed.hourlyAverages;
+        
+        // Sort data by date and time
+        data.sort((a, b) => {
+            if (a.date !== b.date) return a.date.localeCompare(b.date);
+            return parseInt(a.hour) - parseInt(b.hour);
+        });
+        
+        // Prepare x and y values for plotting
+        const x = data.map(item => `${item.date} ${item.hour}:00`);
+        const y = data.map(item => item.value);
+        
+        // Create trace for Plotly
+        const trace = {
+            x: x,
+            y: y,
+            mode: 'lines',  // No markers, just lines
+            line: {
+                color: 'black',
+                width: 1.5,
+                shape: 'linear'  // Don't connect null values
+            },
+            connectgaps: false,  // Important: Don't connect across null values
+            name: `${parameter.toUpperCase()} - Hourly Average`
+        };
+        
+        plotData.push(trace);
+    } else if (Object.keys(processed.stations).length > 0) {
+        // Show data by station (multiple lines)
+        
+        // Create a trace for each station
+        Object.keys(processed.stations).forEach((stationId, index) => {
+            const stationData = processed.stations[stationId];
+            
+            // Skip if no data
+            if (stationData.length === 0) return;
+            
+            // Sort by date and hour
+            stationData.sort((a, b) => {
+                if (a.date !== b.date) return a.date.localeCompare(b.date);
+                return parseInt(a.hour) - parseInt(b.hour);
+            });
+            
+            // IMPORTANT: Process data points to properly handle null values (NR values)
+            // Plotly won't show gaps if we simply pass null values in the array
+            // We need to create separate non-continuous data points
+            
+            let cleanedData = [];
+            let currentGroup = [];
+            
+            // Process each data point to create breaks for null values
+            stationData.forEach((item, i) => {
+                if (item.value !== null) {
+                    // Add this valid data point to the current group
+                    currentGroup.push(item);
+                } else {
+                    // If we have accumulated points and hit a null, store the group and start a new one
+                    if (currentGroup.length > 0) {
+                        cleanedData.push([...currentGroup]);
+                        currentGroup = [];
                     }
+                }
+            });
+            
+            // Add the last group if it's not empty
+            if (currentGroup.length > 0) {
+                cleanedData.push(currentGroup);
+            }
+            
+            // Generate a color based on index for consistent station colors
+            const hue = (index * 137) % 360;  // Use golden ratio to distribute colors
+            const stationColor = `hsl(${hue}, 70%, 40%)`;
+            
+            // Create a trace for each continuous segment (separated by nulls)
+            cleanedData.forEach((segment, segIndex) => {
+                // Convert data for this segment
+                const x = segment.map(item => `${item.date} ${item.hour}:00`);
+                const y = segment.map(item => item.value);
+                
+                // Create trace for Plotly
+                const trace = {
+                    x: x,
+                    y: y,
+                    mode: 'lines',  // No markers, just lines
+                    line: {
+                        color: stationColor,
+                        width: 1.5,
+                        shape: 'linear'
+                    },
+                    // Only show the station name in the legend for the first segment
+                    name: segIndex === 0 ? stationId : stationId + ' (cont.)',
+                    showlegend: segIndex === 0  // Only show in legend once
                 };
                 
-                // Add threshold line for ozone at 155 ppb
-                if (parameter.toLowerCase() === 'o3') {
-                    layout.shapes = [{
-                        type: 'line',
-                        x0: 0,
-                        y0: 155,
-                        x1: 1,
-                        y1: 155,
-                        xref: 'paper',
-                        yref: 'y',
-                        line: {
-                            color: 'red',
-                            width: 2,
-                            dash: 'dash'
-                        }
-                    }];
-                    
-                    // Add annotation for the threshold line
-                    layout.annotations = [{
-                        x: 0.02,
-                        y: 158,
-                        xref: 'paper',
-                        yref: 'y',
-                        text: 'Smog Alert Phase I Threshold (155 ppb)',
-                        showarrow: false,
-                        font: {
-                            color: 'red',
-                            size: 12
-                        }
-                    }];
-                }
-                
-                // Check if we have hourly averages or need to show by station
-                if (processed.hourlyAverages && processed.hourlyAverages.length > 0) {
-                    // Use hourly averages (single line chart)
-                    const data = processed.hourlyAverages;
-                    
-                    // Sort data by date and time
-                    data.sort((a, b) => {
-                        if (a.date !== b.date) return a.date.localeCompare(b.date);
-                        return parseInt(a.hour) - parseInt(b.hour);
-                    });
-                    
-                    // Prepare x and y values for plotting
-                    const x = data.map(item => `${item.date} ${item.hour}:00`);
-                    const y = data.map(item => item.value);
-                    
-                    // Create trace for Plotly
-                    const trace = {
-                        x: x,
-                        y: y,
-                        mode: 'lines',  // No markers, just lines
-                        line: {
-                            color: 'black',
-                            width: 1.5,
-                            shape: 'linear'  // Don't connect null values
-                        },
-                        connectgaps: false,  // Don't connect across null values
-                        name: `${parameter.toUpperCase()} - Hourly Average`
-                    };
-                    
-                    plotData.push(trace);
-                } else if (Object.keys(processed.stations).length > 0) {
-                    // Show data by station (multiple lines)
-                    
-                    // Create a trace for each station
-                    Object.keys(processed.stations).forEach((stationId, index) => {
-                        const stationData = processed.stations[stationId];
-                        
-                        // Skip if no data
-                        if (stationData.length === 0) return;
-                        
-                        // Sort by date and hour
-                        stationData.sort((a, b) => {
-                            if (a.date !== b.date) return a.date.localeCompare(b.date);
-                            return parseInt(a.hour) - parseInt(b.hour);
-                        });
-                        
-                        // Prepare x and y values for plotting
-                        const x = stationData.map(item => `${item.date} ${item.hour}:00`);
-                        const y = stationData.map(item => item.value);
-                        
-                        // Generate a color based on index
-                        const hue = (index * 137) % 360;  // Use golden ratio to distribute colors
-                        
-                        // Create trace for Plotly
-                        const trace = {
-                            x: x,
-                            y: y,
-                            mode: 'lines',  // No markers, just lines
-                            line: {
-                                color: `hsl(${hue}, 70%, 40%)`,
-                                width: 1.5,
-                                shape: 'linear'  // Don't connect null values
-                            },
-                            connectgaps: false,  // Don't connect across null values
-                            name: stationId
-                        };
-                        
-                        plotData.push(trace);
-                    });
-                } else {
-                    // No data to chart
-                    chartContainer.innerHTML = '<p>No data available to chart</p>';
-                    return;
-                }
-                
-                // Create the plot
-                Plotly.newPlot(chartContainer, plotData, layout, {responsive: true});
-            }
+                plotData.push(trace);
+            });
+        });
+    } else {
+        // No data to chart
+        chartContainer.innerHTML = '<p>No data available to chart</p>';
+        return;
+    }
+    
+    // Create the plot
+    Plotly.newPlot(chartContainer, plotData, layout, {responsive: true});
+}
             
 
             // Helper function to get parameter unit
