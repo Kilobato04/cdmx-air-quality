@@ -681,11 +681,8 @@
                                 <div class="form-group">
                                     <button id="compareBtn" class="button-primary">Update Comparison</button>
                                 </div>
-                                <div class="form-group">
-                                    <button id="clearCompareBtn" class="button-secondary">Clear Comparison</button>
-                                </div>
                             </div>
-                        </div> 
+                        
                         <div id="chartContainer" style="width: 100%; height: 400px;"></div>
                     </div>
                 </div>
@@ -823,14 +820,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Function to show status message
+    
+});
+// Function to show status message
     function showStatus(type, message) {
         const statusElement = document.getElementById('status');
         statusElement.textContent = message;
         statusElement.className = 'status ' + type;
         statusElement.style.display = 'block';
     }
-});
 // Function to refresh the chart with current data
 function refreshChart() {
     const parameter = document.getElementById('parameter').value;
