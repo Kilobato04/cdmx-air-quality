@@ -822,13 +822,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     
 });
-// Function to show status message
-    function showStatus(type, message) {
-        const statusElement = document.getElementById('status');
-        statusElement.textContent = message;
-        statusElement.className = 'status ' + type;
-        statusElement.style.display = 'block';
-    }
+
+        
 // Function to refresh the chart with current data
 function refreshChart() {
     const parameter = document.getElementById('parameter').value;
@@ -888,7 +883,14 @@ function createTraceSegment(segment, dateField, timeField, valueField, options, 
         showlegend: segmentIndex === 0
     };
 }
-            
+
+        // Function to show status message
+    function showStatus(type, message) {
+        const statusElement = document.getElementById('status');
+        statusElement.textContent = message;
+        statusElement.className = 'status ' + type;
+        statusElement.style.display = 'block';
+    }
             // Function to fetch air quality data
             async function fetchAirQualityData() {
                 // Get form values
