@@ -216,6 +216,85 @@
             border: 1px solid #ced4da;
             border-radius: 4px;
         }
+        .custom-dropdown {
+        position: relative;
+        display: inline-block;
+        width: 100%;
+    }
+    
+    .dropdown-toggle {
+        background-color: #f8f9fa;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        padding: 8px 12px;
+        width: 100%;
+        text-align: left;
+        cursor: pointer;
+        font-weight: normal;
+    }
+    
+    .dropdown-toggle:after {
+        content: "▼";
+        float: right;
+        font-size: 0.8em;
+    }
+    
+    .dropdown-content {
+        display: none;
+        position: absolute;
+        background-color: white;
+        min-width: 250px;
+        width: 100%;
+        max-height: 400px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        padding: 8px 0;
+        z-index: 1000;
+        overflow-y: auto;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .dropdown-content.show {
+        display: block;
+    }
+    
+    .dropdown-header {
+        padding: 8px 12px;
+        border-bottom: 1px solid #e9ecef;
+        margin-bottom: 8px;
+    }
+    
+    .dropdown-header button {
+        margin-right: 8px;
+        padding: 6px 10px;
+        font-size: 0.85em;
+    }
+    
+    .dropdown-items {
+        max-height: 320px;
+        overflow-y: auto;
+    }
+    
+    .checkbox-item {
+        padding: 6px 12px;
+        display: flex;
+        align-items: center;
+    }
+    
+    .checkbox-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .checkbox-item input {
+        margin-right: 8px;
+        width: auto;
+    }
+    
+    .checkbox-item label {
+        margin-bottom: 0;
+        cursor: pointer;
+        font-weight: normal;
+    }
     </style>
 </head>
 <body>
@@ -458,43 +537,146 @@
                     
                     <div class="tab-pane" id="tabChart">
                        <!-- Add this as a new control in the tab-pane for the Chart tab -->
-<div id="chartControls" class="controls" style="margin-bottom: 15px;">
+                        <div id="chartControls" class="controls" style="margin-bottom: 15px;">
                             <div class="form-group">
-                                <label for="stationCompare">Compare Stations (select multiple):</label>
-                                <select id="stationCompare" multiple style="height: 120px;">
-                                    <option value="ACO">Acolman (ACO)</option>
-                                    <option value="AJM">Ajusco Medio (AJM)</option>
-                                    <option value="ATI">Atizapán (ATI)</option>
-                                    <option value="BJU">Benito Juárez (BJU)</option>
-                                    <option value="CAM">Camarones (CAM)</option>
-                                    <option value="CCA">Centro de Ciencias (CCA)</option>
-                                    <option value="CHO">Chalco (CHO)</option>
-                                    <option value="CUA">Cuajimalpa (CUA)</option>
-                                    <option value="CUT">Cuautitlán (CUT)</option>
-                                    <option value="FAC">FES Acatlán (FAC)</option>
-                                    <option value="GAM">Gustavo A. Madero (GAM)</option>
-                                    <option value="HGM">Hospital General (HGM)</option>
-                                    <option value="INN">Iztacalco (INN)</option>
-                                    <option value="IZT">Iztapalapa (IZT)</option>
-                                    <option value="LLA">Los Laureles (LLA)</option>
-                                    <option value="LPR">La Presa (LPR)</option>
-                                    <option value="MER">Merced (MER)</option>
-                                    <option value="MGH">Miguel Hidalgo (MGH)</option>
-                                    <option value="MPA">Milpa Alta (MPA)</option>
-                                    <option value="NEZ">Nezahualcóyotl (NEZ)</option>
-                                    <option value="PED">Pedregal (PED)</option>
-                                    <option value="SAC">Santiago (SAC)</option>
-                                    <option value="SAG">San Agustín (SAG)</option>
-                                    <option value="SFE">Santa Fe (SFE)</option>
-                                    <option value="TAH">Tláhuac (TAH)</option>
-                                    <option value="TLA">Tlalnepantla (TLA)</option>
-                                    <option value="TLI">Tultitlán (TLI)</option>
-                                    <option value="UAX">UAM Xochimilco (UAX)</option>
-                                    <option value="UIZ">UAM Iztapalapa (UIZ)</option>
-                                    <option value="VIF">Villa de las Flores (VIF)</option>
-                                    <option value="XAL">Xalostoc (XAL)</option>
-                                </select>
+                                <label for="stationCompareDropdown">Station Comparison:</label>
+                                <div class="custom-dropdown">
+                                    <button id="stationDropdownBtn" class="dropdown-toggle">Select Stations to Compare</button>
+                                    <div id="stationDropdownContent" class="dropdown-content">
+                                        <div class="dropdown-header">
+                                            <button id="compareStationsBtn" class="button-primary">Compare Selected Stations</button>
+                                            <button id="clearCompareBtn" class="button-secondary">Clear All</button>
+                                        </div>
+                                        <div class="dropdown-items">
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-ACO" data-station="ACO">
+                                                <label for="station-ACO">Acolman (ACO)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-AJM" data-station="AJM">
+                                                <label for="station-AJM">Ajusco Medio (AJM)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-ATI" data-station="ATI">
+                                                <label for="station-ATI">Atizapán (ATI)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-BJU" data-station="BJU">
+                                                <label for="station-BJU">Benito Juárez (BJU)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-CAM" data-station="CAM">
+                                                <label for="station-CAM">Camarones (CAM)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-CCA" data-station="CCA">
+                                                <label for="station-CCA">Centro de Ciencias (CCA)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-CHO" data-station="CHO">
+                                                <label for="station-CHO">Chalco (CHO)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-CUA" data-station="CUA">
+                                                <label for="station-CUA">Cuajimalpa (CUA)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-CUT" data-station="CUT">
+                                                <label for="station-CUT">Cuautitlán (CUT)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-FAC" data-station="FAC">
+                                                <label for="station-FAC">FES Acatlán (FAC)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-GAM" data-station="GAM">
+                                                <label for="station-GAM">Gustavo A. Madero (GAM)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-HGM" data-station="HGM">
+                                                <label for="station-HGM">Hospital General (HGM)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-INN" data-station="INN">
+                                                <label for="station-INN">Iztacalco (INN)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-IZT" data-station="IZT">
+                                                <label for="station-IZT">Iztapalapa (IZT)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-LLA" data-station="LLA">
+                                                <label for="station-LLA">Los Laureles (LLA)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-LPR" data-station="LPR">
+                                                <label for="station-LPR">La Presa (LPR)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-MER" data-station="MER">
+                                                <label for="station-MER">Merced (MER)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-MGH" data-station="MGH">
+                                                <label for="station-MGH">Miguel Hidalgo (MGH)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-MPA" data-station="MPA">
+                                                <label for="station-MPA">Milpa Alta (MPA)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-NEZ" data-station="NEZ">
+                                                <label for="station-NEZ">Nezahualcóyotl (NEZ)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-PED" data-station="PED">
+                                                <label for="station-PED">Pedregal (PED)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-SAC" data-station="SAC">
+                                                <label for="station-SAC">Santiago (SAC)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-SAG" data-station="SAG">
+                                                <label for="station-SAG">San Agustín (SAG)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-SFE" data-station="SFE">
+                                                <label for="station-SFE">Santa Fe (SFE)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-TAH" data-station="TAH">
+                                                <label for="station-TAH">Tláhuac (TAH)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-TLA" data-station="TLA">
+                                                <label for="station-TLA">Tlalnepantla (TLA)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-TLI" data-station="TLI">
+                                                <label for="station-TLI">Tultitlán (TLI)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-UAX" data-station="UAX">
+                                                <label for="station-UAX">UAM Xochimilco (UAX)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-UIZ" data-station="UIZ">
+                                                <label for="station-UIZ">UAM Iztapalapa (UIZ)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-VIF" data-station="VIF">
+                                                <label for="station-VIF">Villa de las Flores (VIF)</label>
+                                            </div>
+                                            <div class="checkbox-item">
+                                                <input type="checkbox" id="station-XAL" data-station="XAL">
+                                                <label for="station-XAL">Xalostoc (XAL)</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
+                        </div>
                             <div class="form-row">
                                 <div class="form-group">
                                     <button id="compareBtn" class="button-primary">Update Comparison</button>
@@ -515,100 +697,199 @@
     <script src="airqualitydata.js"></script>
     
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Tab switching logic
-            document.querySelectorAll('.tab-button').forEach(button => {
-                button.addEventListener('click', function() {
-                    // Remove active class from all tabs
-                    document.querySelectorAll('.tab-button').forEach(btn => {
-                        btn.classList.remove('active');
-                    });
-                    document.querySelectorAll('.tab-pane').forEach(pane => {
-                        pane.classList.remove('active');
-                    });
-                    
-                    // Add active class to clicked tab
-                    this.classList.add('active');
-                    const tabId = this.getAttribute('data-tab');
-                    document.getElementById(tabId).classList.add('active');
-                });
+document.addEventListener('DOMContentLoaded', function() {
+    // Tab switching logic
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.addEventListener('click', function() {
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-pane').forEach(pane => {
+                pane.classList.remove('active');
             });
             
-            // Clear results button
-            document.getElementById('clearResultsBtn').addEventListener('click', function() {
-                document.getElementById('resultsContainer').style.display = 'none';
-                document.getElementById('status').style.display = 'none';
-                document.getElementById('rawDataTable').innerHTML = '';
-                document.getElementById('averagesTable').innerHTML = '';
-                document.getElementById('stationsData').innerHTML = '';
-                document.getElementById('querySummary').innerHTML = '';
-                document.getElementById('statsGrid').innerHTML = '';
+            // Add active class to clicked tab
+            this.classList.add('active');
+            const tabId = this.getAttribute('data-tab');
+            document.getElementById(tabId).classList.add('active');
+        });
+    });
+    
+    // Clear results button
+    document.getElementById('clearResultsBtn').addEventListener('click', function() {
+        document.getElementById('resultsContainer').style.display = 'none';
+        document.getElementById('status').style.display = 'none';
+        document.getElementById('rawDataTable').innerHTML = '';
+        document.getElementById('averagesTable').innerHTML = '';
+        document.getElementById('stationsData').innerHTML = '';
+        document.getElementById('querySummary').innerHTML = '';
+        document.getElementById('statsGrid').innerHTML = '';
+        
+        // Clear any charts
+        if (window.airQualityChart) {
+            window.airQualityChart.destroy();
+            window.airQualityChart = null;
+        }
+    });
+    
+    // Fetch data button
+    document.getElementById('fetchDataBtn').addEventListener('click', fetchAirQualityData);
+    
+    // Station comparison dropdown toggle
+    const dropdownBtn = document.getElementById('stationDropdownBtn');
+    const dropdownContent = document.getElementById('stationDropdownContent');
+    
+    if (dropdownBtn && dropdownContent) {
+        // Toggle dropdown when button is clicked
+        dropdownBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            dropdownContent.classList.toggle('show');
+        });
+        
+        // Close dropdown when clicking elsewhere
+        document.addEventListener('click', function(e) {
+            if (!dropdownBtn.contains(e.target) && !dropdownContent.contains(e.target)) {
+                dropdownContent.classList.remove('show');
+            }
+        });
+        
+        // Compare button
+        const compareBtn = document.getElementById('compareStationsBtn');
+        if (compareBtn) {
+            compareBtn.addEventListener('click', function(e) {
+                e.preventDefault();
                 
-                // Clear any charts
-                if (window.airQualityChart) {
-                    window.airQualityChart.destroy();
-                    window.airQualityChart = null;
-                }
-            });
-            
-            // Fetch data button
-            document.getElementById('fetchDataBtn').addEventListener('click', fetchAirQualityData);
-            // When the Compare button is clicked
-            document.getElementById('compareBtn').addEventListener('click', function() {
-                const stationCompare = document.getElementById('stationCompare');
-                const selectedStations = Array.from(stationCompare.selectedOptions).map(option => option.value);
+                // Get selected stations
+                const selectedStations = [];
+                document.querySelectorAll('#stationDropdownContent input[type="checkbox"]:checked').forEach(checkbox => {
+                    selectedStations.push(checkbox.getAttribute('data-station'));
+                });
                 
                 if (selectedStations.length === 0) {
                     showStatus('info', 'Please select at least one station to compare.');
                     return;
                 }
                 
+                // Update dropdown button text to show selection
+                dropdownBtn.textContent = `Comparing ${selectedStations.length} stations`;
+                
+                // Close dropdown
+                dropdownContent.classList.remove('show');
+                
+                // Store the selected stations in window object for the chart function to use
+                window.selectedStationsForComparison = selectedStations;
+                
                 // Show loading status
                 showStatus('loading', `Comparing ${selectedStations.length} stations...`);
                 
-                // We'll reuse the existing data if already fetched
+                // If we already have data fetched
                 if (window.currentData && window.currentProcessed) {
-                    displayResults(window.currentData, window.currentProcessed, document.getElementById('parameter').value);
-                    
-                    // For instant feedback, switch to the chart tab
-                    document.querySelector('.tab-button[data-tab="tabChart"]').click();
-                    
+                    refreshChart();
                     showStatus('success', `Showing comparison of ${selectedStations.length} stations`);
                 } else {
                     // If no data is loaded yet, trigger the fetch
                     document.getElementById('fetchDataBtn').click();
                 }
+                
+                // Switch to the Chart tab
+                document.querySelector('.tab-button[data-tab="tabChart"]').click();
             });
-            
-            // When the Clear Comparison button is clicked
-            document.getElementById('clearCompareBtn').addEventListener('click', function() {
-                const stationCompare = document.getElementById('stationCompare');
+        }
+        
+        // Clear comparison button
+        const clearBtn = document.getElementById('clearCompareBtn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function(e) {
+                e.preventDefault();
                 
-                // Clear all selected options
-                for (let i = 0; i < stationCompare.options.length; i++) {
-                    stationCompare.options[i].selected = false;
-                }
+                // Uncheck all checkboxes
+                document.querySelectorAll('#stationDropdownContent input[type="checkbox"]').forEach(checkbox => {
+                    checkbox.checked = false;
+                });
                 
-                // If we have data, update the display
+                // Reset dropdown button text
+                dropdownBtn.textContent = 'Select Stations to Compare';
+                
+                // Clear selected stations
+                window.selectedStationsForComparison = [];
+                
+                // Refresh chart if we have data
                 if (window.currentData && window.currentProcessed) {
-                    displayResults(window.currentData, window.currentProcessed, document.getElementById('parameter').value);
+                    refreshChart();
                     showStatus('info', 'Station comparison cleared');
                 }
-            })
-            // Add this to your displayResults function to store the current data for comparison use
-            function displayResults(data, processed, parameter) {
-                // Store the data for comparison use
-                window.currentData = data;
-                window.currentProcessed = processed;
-            }
+            });
+        }
+    }
+    
+    // Function to show status message
+    function showStatus(type, message) {
+        const statusElement = document.getElementById('status');
+        statusElement.textContent = message;
+        statusElement.className = 'status ' + type;
+        statusElement.style.display = 'block';
+    }
+});
+// Function to refresh the chart with current data
+function refreshChart() {
+    const parameter = document.getElementById('parameter').value;
+    if (window.currentProcessed) {
+        displayChart(window.currentProcessed, parameter);
+    }
+}
+
+// Helper function to create trace segments with proper gaps for null values
+function createTracesWithGaps(data, dateField, timeField, valueField, options) {
+    const result = [];
+    let currentSegment = [];
+    
+    // Process the data points
+    for (let i = 0; i < data.length; i++) {
+        const item = data[i];
+        
+        // If this is a valid data point, add it to the current segment
+        if (item[valueField] !== null && item[valueField] !== undefined) {
+            currentSegment.push(item);
             
-            // Function to show status message
-            function showStatus(type, message) {
-                const statusElement = document.getElementById('status');
-                statusElement.textContent = message;
-                statusElement.className = 'status ' + type;
-                statusElement.style.display = 'block';
+            // If this is the last item, add the segment
+            if (i === data.length - 1 && currentSegment.length > 0) {
+                result.push(createTraceSegment(currentSegment, dateField, timeField, valueField, options, result.length));
             }
+        } 
+        // If we hit a null value
+        else {
+            // If we have points in the current segment, finalize it
+            if (currentSegment.length > 0) {
+                result.push(createTraceSegment(currentSegment, dateField, timeField, valueField, options, result.length));
+                currentSegment = []; // Reset the segment
+            }
+        }
+    }
+    
+    return result;
+}
+
+// Helper function to create a trace segment
+function createTraceSegment(segment, dateField, timeField, valueField, options, segmentIndex) {
+    // Extract x and y values
+    const x = segment.map(item => `${item[dateField]} ${item[timeField]}:00`);
+    const y = segment.map(item => item[valueField]);
+    
+    // Create the trace
+    return {
+        x: x,
+        y: y,
+        mode: 'lines',
+        line: {
+            color: options.color || 'black',
+            width: 1.5
+        },
+        name: options.name || '',
+        // Only show in legend for the first segment
+        showlegend: segmentIndex === 0
+    };
+}
             
             // Function to fetch air quality data
             async function fetchAirQualityData() {
@@ -760,6 +1041,8 @@
             
 // Function to display results
 function displayResults(data, processed, parameter) {
+    window.currentData = data;
+    window.currentProcessed = processed;
     // Filter data according to the selected parameters
     const day = document.getElementById('day').value;
     const hour = document.getElementById('hour').value;
@@ -1097,22 +1380,26 @@ function displayQuerySummary(data, parameter, day, hour, station) {
                 container.innerHTML = html;
             }
             
-// Function to display chart using Plotly
-// Function to display chart using Plotly
+// Enhanced displayChart function with improved comparison support
 function displayChart(processed, parameter) {
     // Get the chart container
     const chartContainer = document.getElementById('chartContainer');
     chartContainer.innerHTML = '';
     
-    // Get selected station for title display
+    // Get selected station for title display 
     const selectedStation = document.getElementById('station').value;
+    
+    // Get comparison stations
+    const comparisonStations = window.selectedStationsForComparison || [];
     
     let plotData = [];
     let layout = {
-        // Add station name to title if a specific station is selected
-        title: selectedStation 
-            ? `${parameter.toUpperCase()} Air Quality Data - Station: ${selectedStation}`
-            : `${parameter.toUpperCase()} Air Quality Data`,
+        // Add title based on selection
+        title: comparisonStations.length > 0 
+            ? `${parameter.toUpperCase()} Air Quality - Comparing ${comparisonStations.length} Stations`
+            : (selectedStation 
+                ? `${parameter.toUpperCase()} Air Quality Data - Station: ${selectedStation}`
+                : `${parameter.toUpperCase()} Air Quality Data`),
         xaxis: {
             title: 'Date & Time',
             tickangle: -45,
@@ -1167,18 +1454,20 @@ function displayChart(processed, parameter) {
         }];
     }
     
-    // Get comparison stations from dropdown if it exists
-    const comparisonSelect = document.getElementById('stationCompare');
-    let comparisonStations = [];
+    // Determine which stations to show
+    let stationsToShow = [];
     
-    if (comparisonSelect && comparisonSelect.value) {
-        comparisonStations = comparisonSelect.value.split(',').filter(s => s.trim() !== '');
-    }
-    
-    // Check if we have hourly averages or need to show by station
-    if (processed.hourlyAverages && processed.hourlyAverages.length > 0 && 
-        (!comparisonStations.length && !selectedStation)) {
-        // Use hourly averages (single line chart)
+    // If comparison is active, use those stations
+    if (comparisonStations.length > 0) {
+        stationsToShow = comparisonStations;
+    } 
+    // Otherwise if a specific station is selected
+    else if (selectedStation) {
+        stationsToShow = [selectedStation];
+    } 
+    // Otherwise show hourly averages if available, or all stations
+    else if (processed.hourlyAverages && processed.hourlyAverages.length > 0) {
+        // Display hourly averages (aggregate data)
         const data = processed.hourlyAverages;
         
         // Sort data by date and time
@@ -1187,39 +1476,31 @@ function displayChart(processed, parameter) {
             return parseInt(a.hour) - parseInt(b.hour);
         });
         
-        // Create traces with explicit null gaps (important fix)
+        // Create traces with explicit null gaps
         const traces = createTracesWithGaps(data, 'date', 'hour', 'value', {
             color: 'black',
             name: `${parameter.toUpperCase()} - Hourly Average`
         });
         
         plotData.push(...traces);
-    } else if (Object.keys(processed.stations).length > 0) {
-        // Which stations to show
-        let stationsToShow = [];
-        
-        // If comparison is active, use those stations
-        if (comparisonStations.length > 0) {
-            stationsToShow = comparisonStations;
-        } 
-        // Otherwise if a specific station is selected
-        else if (selectedStation) {
-            stationsToShow = [selectedStation];
-        } 
-        // Otherwise show all stations
-        else {
-            stationsToShow = Object.keys(processed.stations);
-        }
-        
-        // Create a trace for each station we want to show
+    }
+    
+    // Create a trace for each station we want to show (if any)
+    if (stationsToShow.length > 0 && processed.stations) {
         stationsToShow.forEach((stationId, index) => {
             // Skip if station doesn't exist in our data
-            if (!processed.stations[stationId]) return;
+            if (!processed.stations[stationId]) {
+                console.log(`Station ${stationId} not found in data`);
+                return;
+            }
             
             const stationData = processed.stations[stationId];
             
             // Skip if no data
-            if (stationData.length === 0) return;
+            if (stationData.length === 0) {
+                console.log(`No data for station ${stationId}`);
+                return;
+            }
             
             // Sort by date and hour
             stationData.sort((a, b) => {
@@ -1231,7 +1512,7 @@ function displayChart(processed, parameter) {
             const hue = (index * 137) % 360;  // Use golden ratio to distribute colors
             const stationColor = `hsl(${hue}, 70%, 40%)`;
             
-            // Create traces with explicit null gaps (important fix)
+            // Create traces with explicit null gaps
             const traces = createTracesWithGaps(stationData, 'date', 'hour', 'value', {
                 color: stationColor,
                 name: stationId
@@ -1239,7 +1520,9 @@ function displayChart(processed, parameter) {
             
             plotData.push(...traces);
         });
-    } else {
+    }
+    
+    if (plotData.length === 0) {
         // No data to chart
         chartContainer.innerHTML = '<p>No data available to chart</p>';
         return;
