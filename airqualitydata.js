@@ -83,14 +83,6 @@ function parseAirQualityHtml(html, parameter, year, month, specificDay = null, s
       console.warn('No tables found in the HTML');
       return [];
     }
-  
-  // Add near the beginning of parseAirQualityHtml function
-    console.log(`Parsing HTML for parameter: ${parameter}`);
-    console.log(`First 200 characters of HTML: ${html.substring(0, 200)}`);
-    // After the tables are found:
-    if (tables.length > 0) {
-      console.log(`First table structure preview: ${tables[0].outerHTML.substring(0, 300)}`);
-    }
 
     
     // Get the table with the most rows (likely our data table)
