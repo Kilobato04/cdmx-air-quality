@@ -65,24 +65,31 @@ function parseAirQualityHtml(html, parameter, year, month, specificDay = null, s
       console.log(`First table structure preview: ${tables[0].outerHTML.substring(0, 300)}`);
     }
   
-  // Check if HTML is empty or too short
-  if (!html || html.length < 100) {
-    console.error('HTML response is empty or too short');
-    return [];
-  }
-  
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-  
-  try {
-    // Extract tables from the document
-    const tables = doc.querySelectorAll('table');
-    console.log(`Found ${tables.length} tables in HTML`);
-    
-    if (tables.length === 0) {
-      console.warn('No tables found in the HTML');
+    // Check if HTML is empty or too short
+    if (!html || html.length < 100) {
+      console.error('HTML response is empty or too short');
       return [];
     }
+    
+    console.log(`Parsing HTML for parameter: ${parameter}`);
+    console.log(`First 200 characters of HTML: ${html.substring(0, 200)}`);
+    
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    
+    try {
+      // Extract tables from the document
+      const tables = doc.querySelectorAll('table');
+      console.log(`Found ${tables.length} tables in HTML for parameter ${parameter}`);
+      
+      if (tables.length > 0) {
+        console.log(`First table preview: ${tables[0].outerHTML.substring(0, 300)}`);
+      }
+      
+      if (tables.length === 0) {
+        console.warn('No tables found in the HTML');
+        return [];
+      }
     
     // Get the table with the most rows (likely our data table)
     let dataTable = tables[0];
