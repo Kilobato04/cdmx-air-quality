@@ -6,14 +6,22 @@
 
 // Function to fetch and parse air quality data from CDMX website through our proxy
 async function fetchAirQualityData(parameter = 'o3', year = '2025', month = '03', day = null, hour = null, station = null) {
-  try {
+try {
     // Construct the URL for our proxy
     const proxyUrl = '/.netlify/functions/proxy';
     
-    // Translate parameter name for PM2.5 if needed
+    // Translate parameter names as needed
     let paramValue = parameter;
+    
+    // Fix parameter name for PM2.5
     if (parameter === 'pm25') {
+      console.log('Translating pm25 parameter to pm2');
       paramValue = 'pm2';  // Use 'pm2' for PM2.5 as required by the official website
+    }
+    // Fix parameter name for Ozone 8-hour
+    else if (parameter === 'o3_8h') {
+      console.log('Using o3_8h parameter as is');
+      paramValue = 'o3_8h';  // Ensure it matches exactly what the website expects
     }
     
     // Build the query parameters
@@ -31,7 +39,7 @@ async function fetchAirQualityData(parameter = 'o3', year = '2025', month = '03'
     
     // Combine proxy URL with parameters
     const url = `${proxyUrl}?${params.toString()}`;
-    console.log(`Fetching data from: ${url}`);
+    console.log(`Fetching data from: ${url} (original parameter: ${parameter}, sent as: ${paramValue})`);
     
     // Fetch the data from our proxy
     const response = await fetch(url);
