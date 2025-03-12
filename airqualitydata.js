@@ -99,9 +99,24 @@ function parseAirQualityHtml(html, parameter, year, month, specificDay = null, s
     
     console.log(`Header row has ${headerCells.length} cells`);
     
-    if (headerCells.length < 3) {
-      console.warn('Header row does not have enough cells');
-      return [];
+    // Replace the existing check
+    if (headerCells.length < 2) { // Reduce minimum required cells
+      console.warn(`Header row has only ${headerCells.length} cells for parameter ${parameter}`);
+      // For PM2.5 we might need special handling
+      if (parameter === 'pm25' || parameter === 'pm25nowCast') {
+        console.log('Attempting to use alternative parsing method for PM2.5 data');
+        // Try to find a different row that might contain headers
+        for (let i = 2; i < rows.length && i < 5; i++) {
+          const altHeaderCells = rows[i].querySelectorAll('td');
+          if (altHeaderCells.length >= 2) {
+            console.log(`Found alternative header row with ${altHeaderCells.length} cells`);
+            headerCells = altHeaderCells;
+            break;
+          }
+        }
+      } else {
+        return []; // For other parameters, we can still return empty
+      }
     }
     
     // Extract header texts 
