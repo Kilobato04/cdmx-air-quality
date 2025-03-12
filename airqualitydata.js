@@ -116,31 +116,53 @@ function parseAirQualityHtml(html, parameter, year, month, specificDay = null, s
       return [];
     }
     
-    // Extract headers from second row
-    const headerRow = rows[1];
-    const headerCells = headerRow.querySelectorAll('td');
-    
-    console.log(`Header row has ${headerCells.length} cells`);
-    
-    // Replace the existing check
-    if (headerCells.length < 2) { // Reduce minimum required cells
-      console.warn(`Header row has only ${headerCells.length} cells for parameter ${parameter}`);
-      // For PM2.5 we might need special handling
-      if (parameter === 'pm25' || parameter === 'pm25nowCast') {
-        console.log('Attempting to use alternative parsing method for PM2.5 data');
-        // Try to find a different row that might contain headers
-        for (let i = 2; i < rows.length && i < 5; i++) {
-          const altHeaderCells = rows[i].querySelectorAll('td');
-          if (altHeaderCells.length >= 2) {
-            console.log(`Found alternative header row with ${altHeaderCells.length} cells`);
-            headerCells = altHeaderCells;
-            break;
-          }
-        }
-      } else {
-        return []; // For other parameters, we can still return empty
+// Extract headers from specific row based on parameter
+let headerRowIndex = 1;  // Default to second row (index 1)
+
+// For o3_8h, the header is in the fourth row
+if (parameter === 'o3_8h') {
+  console.log('Using fourth row as header for o3_8h data');
+  headerRowIndex = 3;  // Fourth row (index 3, since we start counting from 0)
+}
+
+// Make sure we have enough rows before accessing the header row
+if (rows.length <= headerRowIndex) {
+  console.warn(`Not enough rows for parameter ${parameter}. Needed row ${headerRowIndex+1}, but only have ${rows.length} rows.`);
+  return [];
+}
+
+// Use the determined row index
+const headerRow = rows[headerRowIndex];
+const headerCells = headerRow.querySelectorAll('td');
+
+console.log(`Header row has ${headerCells.length} cells for parameter ${parameter}`);
+
+// Make the check more lenient for o3_8h
+if (headerCells.length < 2 && parameter !== 'o3_8h') {
+  console.warn(`Header row has too few cells (${headerCells.length}) for ${parameter}`);
+  
+  // For PM2.5 we might need special handling
+  if (parameter === 'pm25' || parameter === 'pm25nowCast') {
+    console.log('Attempting to use alternative parsing method for PM2.5 data');
+    // Try to find a different row that might contain headers
+    for (let i = 2; i < rows.length && i < 5; i++) {
+      const altHeaderCells = rows[i].querySelectorAll('td');
+      if (altHeaderCells.length >= 2) {
+        console.log(`Found alternative header row with ${altHeaderCells.length} cells`);
+        headerCells = altHeaderCells;
+        break;
       }
     }
+  } else {
+    return []; // For other parameters, we can still return empty
+  }
+}
+
+// For o3_8h, continue even with fewer header cells
+if (parameter === 'o3_8h' && headerCells.length < 1) {
+  console.warn(`Header row for o3_8h has too few cells (${headerCells.length})`);
+  return [];
+}
     
     // Extract header texts 
     const headerTexts = Array.from(headerCells).map(cell => cell.textContent.trim());
