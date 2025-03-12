@@ -55,6 +55,35 @@ async function fetchAirQualityData(parameter = 'o3', year = '2025', month = '03'
 // Function to parse HTML response from aire.cdmx.gob.mx
 function parseAirQualityHtml(html, parameter, year, month, specificDay = null, specificHour = null, specificStation = null) {
   const data = [];
+  
+ // Check if HTML is empty or too short
+  if (!html || html.length < 100) {
+    console.error('HTML response is empty or too short');
+    return [];
+  }
+  
+  // These logs are fine here at the beginning
+  console.log(`Parsing HTML for parameter: ${parameter}`);
+  console.log(`First 200 characters of HTML: ${html.substring(0, 200)}`);
+  
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  
+  try {
+    // Extract tables from the document
+    const tables = doc.querySelectorAll('table');
+    console.log(`Found ${tables.length} tables in HTML`);
+    
+    // Move this code here AFTER tables is defined
+    if (tables.length > 0) {
+      console.log(`First table structure preview: ${tables[0].outerHTML.substring(0, 300)}`);
+    }
+    
+    if (tables.length === 0) {
+      console.warn('No tables found in the HTML');
+      return [];
+    }
+  
   // Add near the beginning of parseAirQualityHtml function
     console.log(`Parsing HTML for parameter: ${parameter}`);
     console.log(`First 200 characters of HTML: ${html.substring(0, 200)}`);
@@ -62,31 +91,7 @@ function parseAirQualityHtml(html, parameter, year, month, specificDay = null, s
     if (tables.length > 0) {
       console.log(`First table structure preview: ${tables[0].outerHTML.substring(0, 300)}`);
     }
-  
-// Check if HTML is empty or too short
-  if (!html || html.length < 100) {
-    console.error('HTML response is empty or too short for parameter:', parameter);
-    return [];
-  }
-  
-  try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    
-    // Extract tables from the document - safely
-    let tables = [];
-    try {
-      tables = doc.querySelectorAll('table');
-      console.log(`Found ${tables.length} tables for ${parameter}`);
-    } catch (e) {
-      console.error('Error getting tables:', e);
-      return [];
-    }
-    
-    if (!tables || tables.length === 0) {
-      console.warn('No tables found in the HTML for parameter:', parameter);
-      return [];
-    }
+
     
     // Get the table with the most rows (likely our data table)
     let dataTable = tables[0];
