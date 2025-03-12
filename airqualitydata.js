@@ -12,12 +12,26 @@ async function fetchAirQualityData(parameter = 'o3', year = '2025', month = '03'
     const proxyUrl = '/.netlify/functions/proxy';
     
     // Build the query parameters
-    const params = new URLSearchParams({
-      qtipo: 'HORARIOS',
-      parametro: parameter,
-      anio: year,
-      qmes: month
-    });
+    console.log(`Parameter being sent to API: ${parameter}`);
+    
+    // Create params object with special handling for PM2.5
+    let params;
+    if (parameter === 'pm25') {
+      console.log('Translating pm25 parameter');
+      params = new URLSearchParams({
+        qtipo: 'HORARIOS',
+        parametro: 'PM2.5', // Try with period
+        anio: year,
+        qmes: month
+      });
+    } else {
+      params = new URLSearchParams({
+        qtipo: 'HORARIOS',
+        parametro: parameter,
+        anio: year,
+        qmes: month
+      });
+    }
     
     // Add optional parameters if specified
     if (day) params.append('dia', day);
@@ -50,6 +64,13 @@ async function fetchAirQualityData(parameter = 'o3', year = '2025', month = '03'
 // Function to parse HTML response from aire.cdmx.gob.mx
 function parseAirQualityHtml(html, parameter, year, month, specificDay = null, specificHour = null, specificStation = null) {
   const data = [];
+  // Add near the beginning of parseAirQualityHtml function
+    console.log(`Parsing HTML for parameter: ${parameter}`);
+    console.log(`First 200 characters of HTML: ${html.substring(0, 200)}`);
+    // After the tables are found:
+    if (tables.length > 0) {
+      console.log(`First table structure preview: ${tables[0].outerHTML.substring(0, 300)}`);
+    }
   
   // Check if HTML is empty or too short
   if (!html || html.length < 100) {
