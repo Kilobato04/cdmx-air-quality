@@ -65,31 +65,39 @@ function parseAirQualityHtml(html, parameter, year, month, specificDay = null, s
       console.log(`First table structure preview: ${tables[0].outerHTML.substring(0, 300)}`);
     }
   
-    // Check if HTML is empty or too short
-    if (!html || html.length < 100) {
-      console.error('HTML response is empty or too short');
-      return [];
+      // Check if HTML is empty or too short
+  if (!html || html.length < 100) {
+    console.error('HTML response is empty or too short');
+    return [];
+  }
+  
+  console.log(`Parsing HTML for parameter: ${parameter}`);
+  console.log(`First 200 characters of HTML: ${html.substring(0, 200)}`);
+  
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  
+  try {
+    // Extract tables from the document
+    const tables = doc.querySelectorAll('table');
+    
+    // Now tables is defined, we can log information about it
+    console.log(`Found ${tables.length} tables in HTML for parameter ${parameter}`);
+    
+    // Only try to access tables[0] if tables has at least one element
+    if (tables.length > 0) {
+      try {
+        // Use a try-catch just for this logging in case there's an issue
+        console.log(`First table has ${tables[0].querySelectorAll('tr').length} rows`);
+      } catch (e) {
+        console.log('Could not access table details:', e);
+      }
     }
     
-    console.log(`Parsing HTML for parameter: ${parameter}`);
-    console.log(`First 200 characters of HTML: ${html.substring(0, 200)}`);
-    
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    
-    try {
-      // Extract tables from the document
-      const tables = doc.querySelectorAll('table');
-      console.log(`Found ${tables.length} tables in HTML for parameter ${parameter}`);
-      
-      if (tables.length > 0) {
-        console.log(`First table preview: ${tables[0].outerHTML.substring(0, 300)}`);
-      }
-      
-      if (tables.length === 0) {
-        console.warn('No tables found in the HTML');
-        return [];
-      }
+    if (tables.length === 0) {
+      console.warn('No tables found in the HTML for parameter:', parameter);
+      return [];
+    }
     
     // Get the table with the most rows (likely our data table)
     let dataTable = tables[0];
