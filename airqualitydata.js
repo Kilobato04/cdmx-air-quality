@@ -8,30 +8,23 @@
 async function fetchAirQualityData(parameter = 'o3', year = '2025', month = '03', day = null, hour = null, station = null) {
   try {
     // Construct the URL for our proxy
-    // Replace with your own proxy URL if different
     const proxyUrl = '/.netlify/functions/proxy';
     
-    // Build the query parameters
-    console.log(`Parameter being sent to API: ${parameter}`);
+    // Build the query parameters with special handling for PM2.5
+    let paramValue = parameter;
     
-    // Create params object with special handling for PM2.5
-    let params;
+    // Fix parameter name for PM2.5
     if (parameter === 'pm25') {
-      console.log('Translating pm25 parameter');
-      params = new URLSearchParams({
-        qtipo: 'HORARIOS',
-        parametro: 'PM2.5', // Try with period
-        anio: year,
-        qmes: month
-      });
-    } else {
-      params = new URLSearchParams({
-        qtipo: 'HORARIOS',
-        parametro: parameter,
-        anio: year,
-        qmes: month
-      });
+      console.log('Translating pm25 parameter to pm2');
+      paramValue = 'pm2';  // Use 'pm2' for PM2.5 as required by the official website
     }
+    
+    const params = new URLSearchParams({
+      qtipo: 'HORARIOS',
+      parametro: paramValue,
+      anio: year,
+      qmes: month
+    });
     
     // Add optional parameters if specified
     if (day) params.append('dia', day);
@@ -40,7 +33,7 @@ async function fetchAirQualityData(parameter = 'o3', year = '2025', month = '03'
     
     // Combine proxy URL with parameters
     const url = `${proxyUrl}?${params.toString()}`;
-    console.log(`Fetching data from: ${url}`);
+    console.log(`Fetching data from: ${url} (original parameter: ${parameter}, sent as: ${paramValue})`);
     
     // Fetch the data from our proxy
     const response = await fetch(url);
