@@ -10,15 +10,13 @@ async function fetchAirQualityData(parameter = 'o3', year = '2025', month = '03'
     // Construct the URL for our proxy
     const proxyUrl = '/.netlify/functions/proxy';
     
-    // Build the query parameters with special handling for PM2.5
+    // Translate parameter name for PM2.5 if needed
     let paramValue = parameter;
-    
-    // Fix parameter name for PM2.5
     if (parameter === 'pm25') {
-      console.log('Translating pm25 parameter to pm2');
       paramValue = 'pm2';  // Use 'pm2' for PM2.5 as required by the official website
     }
     
+    // Build the query parameters
     const params = new URLSearchParams({
       qtipo: 'HORARIOS',
       parametro: paramValue,
@@ -33,7 +31,7 @@ async function fetchAirQualityData(parameter = 'o3', year = '2025', month = '03'
     
     // Combine proxy URL with parameters
     const url = `${proxyUrl}?${params.toString()}`;
-    console.log(`Fetching data from: ${url} (original parameter: ${parameter}, sent as: ${paramValue})`);
+    console.log(`Fetching data from: ${url}`);
     
     // Fetch the data from our proxy
     const response = await fetch(url);
